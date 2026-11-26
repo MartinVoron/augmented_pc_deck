@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
 
 jobs:
   conventions:
@@ -20,12 +21,20 @@ jobs:
           BRANCH: ${{ github.head_ref }}
         run: scripts/check-branch-name.sh "$BRANCH"
 
-      - name: Titre de la PR (devient le message du squash merge)
+      - name: Titre de la PR (devient le message du commit fusionné)
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          printf '%s\n' "$TITLE" > "$RUNNER_TEMP/title.txt"
-          .githooks/commit-msg "$RUNNER_TEMP/title.txt"
+          printf '%s\n' "$TITLE" > "$RUNNER_TEMP/titre.txt"
+          .githooks/commit-msg "$RUNNER_TEMP/titre.txt"
+
+      - name: Issue liée
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "$BODY" > "$RUNNER_TEMP/description.txt"
+          scripts/check-issue-link.sh "$RUNNER_TEMP/description.txt"
 
       - name: Messages des commits
         env:
@@ -34,9 +43,9 @@ jobs:
         run: |
           status=0
           for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
-            git log -1 --format=%B "$sha" > "$RUNNER_TEMP/msg.txt"
-            if ! .githooks/commit-msg "$RUNNER_TEMP/msg.txt"; then
-              echo "::error::Commit $sha ne respecte pas Conventional Commits"
+            git log -1 --format=%B "$sha" > "$RUNNER_TEMP/message.txt"
+            if ! .githooks/commit-msg "$RUNNER_TEMP/message.txt"; then
+              echo "::error::Le commit $sha ne respecte pas la convention"
               status=1
             fi
           done

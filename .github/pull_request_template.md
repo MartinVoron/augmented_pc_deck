@@ -1,19 +1,22 @@
-<!-- Titre de la PR au format Conventional Commits, ex. : feat(timer): ajouter un minuteur Pomodoro -->
+<!--
+Titre de la PR : même format qu'un commit, en français.
+Exemple : ajout(minuteur): ajouter un minuteur pomodoro
+-->
 
-## Quoi
+## Issue liée
 
-<!-- Ce que change cette PR, en quelques lignes. -->
+Closes #<!-- numéro de l'issue (obligatoire) -->
 
-## Pourquoi
+## Ce qui change
 
-<!-- Le besoin ou le bug. Lien vers l'issue : Closes #… -->
+<!-- En quelques lignes simples. -->
 
 ## Comment tester
 
 - [ ] …
 
-## Checklist
+## Vérifications
 
-- [ ] Le titre suit Conventional Commits
-- [ ] L'app se lance (`npm run tauri dev`)
-- [ ] Pas de secret (token, mot de passe, `.env`) dans le diff
+- [ ] Le titre et les commits sont en français et suivent la convention
+- [ ] L'application se lance (`npm run tauri dev`)
+- [ ] Aucun secret (jeton, mot de passe, `.env`) dans les changements
