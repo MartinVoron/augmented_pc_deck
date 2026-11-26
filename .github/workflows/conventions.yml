@@ -29,6 +29,8 @@ jobs:
           .githooks/commit-msg "$RUNNER_TEMP/titre.txt"
 
       - name: Issue liée
+        # Les PR de version sont ouvertes automatiquement, sans issue.
+        if: ${{ !startsWith(github.head_ref, 'version/') }}
         env:
           BODY: ${{ github.event.pull_request.body }}
           GH_TOKEN: ${{ github.token }}
@@ -50,3 +52,9 @@ jobs:
             fi
           done
           exit $status
+
+      - name: Même numéro de version partout
+        run: node scripts/version/version.mjs verifier
+
+      - name: Tests du calcul de version
+        run: node --test scripts/version/version.test.mjs

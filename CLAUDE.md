@@ -31,6 +31,8 @@ Le détail est dans `CONTRIBUTING.md`. En résumé, Claude doit :
 6. **Ne jamais utiliser** `--no-verify`, `git push --force` sur une branche partagée, ni
    réécrire l'historique de `main`. Sur sa propre branche : `--force-with-lease` seulement.
 7. Ne jamais commit de secrets (`.env`, jetons GitHub/Gmail, identifiants OAuth).
+8. Ne jamais changer un numéro de version ni `CHANGELOG.md` à la main : c'est le rôle
+   de la PR `version/vX.Y.Z` ouverte par le workflow « Version » (voir `CONTRIBUTING.md`).
 
 Vérifier un message avant de commit :
 
