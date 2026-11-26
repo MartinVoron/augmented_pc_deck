@@ -84,6 +84,20 @@ pub struct TileConfig {
     /// Comptes à rebours d'une tuile des minuteurs.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub timers: Vec<TimerSettings>,
+    /// Durées du mode Pomodoro d'une tuile des minuteurs (valeurs par défaut si absent).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pomodoro: Option<PomodoroSettings>,
+}
+
+/// Durées du mode Pomodoro, en minutes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PomodoroSettings {
+    pub work_mins: u32,
+    pub short_break_mins: u32,
+    pub long_break_mins: u32,
+    /// Nombre de séances de travail avant une longue pause.
+    pub sessions_before_long_break: u32,
 }
 
 /// Un compte à rebours enregistré (son nom et sa durée ; l'état en cours n'est pas gardé).
@@ -122,6 +136,7 @@ impl TileConfig {
             size: size.into(),
             shortcuts: Vec::new(),
             timers: Vec::new(),
+            pomodoro: None,
         }
     }
 }
@@ -242,6 +257,7 @@ mod tests {
         }] } }"#;
         let config = parse(text).unwrap();
         assert_eq!(config.layout.tiles[0].timers[0].duration_secs, 240);
+        assert_eq!(config.layout.tiles[0].pomodoro, None);
     }
 
     #[test]
