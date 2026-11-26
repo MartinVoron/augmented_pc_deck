@@ -1,0 +1,35 @@
+/*
+  Palette et dimensions communes de l'interface (thème sombre).
+  Tous les composants utilisent ces variables plutôt que des couleurs en dur.
+*/
+:root {
+  color-scheme: dark;
+
+  /* Fonds, du plus sombre au plus clair */
+  --color-bg: #121418;
+  --color-surface: #1c1f25;
+  --color-surface-hover: #242830;
+  --color-border: #2e333c;
+
+  /* Texte */
+  --color-text: #e6e8eb;
+  --color-text-muted: #9aa0a6;
+
+  /* Couleurs d'accent, une par famille de tuiles */
+  --color-accent: #4f8cff;
+  --color-success: #34c759;
+  --color-warning: #ff9f0a;
+  --color-danger: #ff5c5c;
+  --color-purple: #bf5af2;
+
+  /* Grille de tuiles */
+  --tile-unit: 140px;
+  --tile-gap: 12px;
+  --tile-radius: 14px;
+
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
