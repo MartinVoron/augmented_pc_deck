@@ -7,7 +7,7 @@ const mockedInvoke = vi.mocked(invoke);
 
 const config: Config = {
   version: 1,
-  general: { notificationsEnabled: false },
+  general: { language: "fr", notificationsEnabled: false },
   layout: { tiles: [{ id: "timers-1", kind: "timers", title: "Minuteurs", size: "1x1" }] },
 };
 
