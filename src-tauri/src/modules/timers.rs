@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
 use crate::error::{AppError, AppResult};
@@ -39,6 +39,9 @@ pub enum Status {
 #[serde(rename_all = "camelCase")]
 pub struct TimerRun {
     pub name: String,
+    /// Titre et texte de la notification de fin (sinon « Minuteur terminé »).
+    #[serde(skip)]
+    pub alert: Option<Alert>,
     pub status: Status,
     pub duration_ms: u64,
     /// Temps restant au moment de la pause (0 quand il est terminé).
@@ -50,10 +53,18 @@ pub struct TimerRun {
     generation: u64,
 }
 
+/// Notification personnalisée envoyée à la fin d'un minuteur (par exemple le Pomodoro).
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct Alert {
+    pub title: String,
+    pub body: String,
+}
+
 impl TimerRun {
     fn start(name: String, duration_ms: u64, now: u64, generation: u64) -> Self {
         Self {
             name,
+            alert: None,
             status: Status::Running,
             duration_ms,
             remaining_ms: duration_ms,
@@ -122,6 +133,22 @@ fn emit_changed<R: Runtime>(app: &AppHandle<R>, runs: &HashMap<String, TimerRun>
     }
 }
 
+/// Notification envoyée à la fin d'un minuteur.
+fn end_notification(run: &TimerRun) -> Notification {
+    let (title, body) = match &run.alert {
+        Some(alert) => (alert.title.clone(), alert.body.clone()),
+        None => (
+            "Minuteur terminé".into(),
+            format!("« {} » est terminé.", run.name),
+        ),
+    };
+    Notification {
+        title,
+        body,
+        sound: Some(Sound::Reminder),
+    }
+}
+
 /// Attend la fin d'un lancement, puis termine le minuteur et envoie la notification.
 fn schedule<R: Runtime>(app: AppHandle<R>, key: String, generation: u64, delay_ms: u64) {
     tauri::async_runtime::spawn(async move {
@@ -134,11 +161,7 @@ fn schedule<R: Runtime>(app: AppHandle<R>, key: String, generation: u64, delay_m
         if !run.finish(generation) {
             return;
         }
-        let notification = Notification {
-            title: "Minuteur terminé".into(),
-            body: format!("« {} » est terminé.", run.name),
-            sound: Some(Sound::Reminder),
-        };
+        let notification = end_notification(run);
         emit_changed(&app, &runs);
         drop(runs);
         if let Err(e) = notifications::notify(&app, &notification) {
@@ -154,6 +177,7 @@ pub fn timers_list(timers: State<'_, Timers>) -> AppResult<HashMap<String, Timer
 }
 
 /// Démarre un minuteur, ou le reprend s'il est en pause.
+/// `alert` remplace la notification de fin par défaut.
 #[tauri::command]
 pub fn timers_start<R: Runtime>(
     app: AppHandle<R>,
@@ -161,6 +185,7 @@ pub fn timers_start<R: Runtime>(
     key: String,
     name: String,
     duration_ms: u64,
+    alert: Option<Alert>,
 ) -> AppResult<TimerRun> {
     if duration_ms == 0 || duration_ms > MAX_DURATION_MS {
         return Err(AppError::InvalidInput(
@@ -173,12 +198,14 @@ pub fn timers_start<R: Runtime>(
     let run = match runs.get_mut(&key) {
         Some(run) if run.status == Status::Paused => {
             run.name = name;
+            run.alert = alert;
             run.resume(now, generation);
             run.clone()
         }
         Some(run) if run.status == Status::Running => return Ok(run.clone()),
         _ => {
-            let run = TimerRun::start(name, duration_ms, now, generation);
+            let mut run = TimerRun::start(name, duration_ms, now, generation);
+            run.alert = alert;
             runs.insert(key.clone(), run.clone());
             run
         }
@@ -256,6 +283,19 @@ mod tests {
         run.pause(2_000);
         assert!(!run.finish(1));
         assert_eq!(run.status, Status::Paused);
+    }
+
+    #[test]
+    fn end_notification_uses_the_custom_alert() {
+        let mut run = TimerRun::start("Thé".into(), 1_000, 0, 1);
+        assert_eq!(end_notification(&run).body, "« Thé » est terminé.");
+        run.alert = Some(Alert {
+            title: "Pomodoro".into(),
+            body: "Place à la pause.".into(),
+        });
+        let notification = end_notification(&run);
+        assert_eq!(notification.title, "Pomodoro");
+        assert_eq!(notification.sound, Some(Sound::Reminder));
     }
 
     #[test]
