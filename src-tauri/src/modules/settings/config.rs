@@ -87,6 +87,22 @@ pub struct TileConfig {
     /// Durées du mode Pomodoro d'une tuile des minuteurs (valeurs par défaut si absent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pomodoro: Option<PomodoroSettings>,
+    /// Tâches d'une tuile de la liste de tâches, dans l'ordre affiché.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub todos: Vec<Todo>,
+    /// Masque les tâches terminées d'une tuile de la liste de tâches.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hide_done: bool,
+}
+
+/// Une tâche de la liste.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Todo {
+    pub id: String,
+    pub text: String,
+    #[serde(default)]
+    pub done: bool,
 }
 
 /// Durées du mode Pomodoro, en minutes.
@@ -137,6 +153,8 @@ impl TileConfig {
             shortcuts: Vec::new(),
             timers: Vec::new(),
             pomodoro: None,
+            todos: Vec::new(),
+            hide_done: false,
         }
     }
 }
@@ -258,6 +276,20 @@ mod tests {
         let config = parse(text).unwrap();
         assert_eq!(config.layout.tiles[0].timers[0].duration_secs, 240);
         assert_eq!(config.layout.tiles[0].pomodoro, None);
+    }
+
+    #[test]
+    fn todos_tile_keeps_its_tasks_and_option() {
+        let text = r#"{ "layout": { "tiles": [{
+            "id": "todos-1", "kind": "todos", "title": "Tâches", "size": "2x2", "hideDone": true,
+            "todos": [{ "id": "t1", "text": "Appeler le garage", "done": true }, { "id": "t2", "text": "Courses" }]
+        }] } }"#;
+        let config = parse(text).unwrap();
+        let tile = &config.layout.tiles[0];
+        assert!(tile.hide_done);
+        assert!(tile.todos[0].done && !tile.todos[1].done);
+        let written = serde_json::to_string(&config).unwrap();
+        assert_eq!(parse(&written).unwrap(), config);
     }
 
     #[test]
