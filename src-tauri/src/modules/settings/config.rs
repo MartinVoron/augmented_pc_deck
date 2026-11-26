@@ -1,0 +1,192 @@
+//! Contenu de la configuration et migrations entre les versions du format.
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+/// Version actuelle du format du fichier de configuration.
+/// À augmenter à chaque changement de format, en ajoutant une étape dans [`migrate`].
+pub const CURRENT_VERSION: u32 = 1;
+
+/// Configuration complète de l'application, enregistrée dans `config.json`.
+///
+/// `#[serde(default)]` : un champ absent du fichier prend sa valeur par défaut,
+/// ce qui permet d'ajouter un réglage sans casser les fichiers existants.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Config {
+    pub version: u32,
+    pub general: GeneralSettings,
+    pub layout: Layout,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            version: CURRENT_VERSION,
+            general: GeneralSettings::default(),
+            layout: Layout::default(),
+        }
+    }
+}
+
+/// Réglages généraux.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct GeneralSettings {
+    /// Notifications Windows activées pour toute l'application.
+    pub notifications_enabled: bool,
+}
+
+impl Default for GeneralSettings {
+    fn default() -> Self {
+        Self {
+            notifications_enabled: true,
+        }
+    }
+}
+
+/// Disposition de la grille de tuiles.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Layout {
+    pub tiles: Vec<TileConfig>,
+}
+
+/// Une tuile de la grille.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TileConfig {
+    pub id: String,
+    /// Module affiché : `launcher`, `processes`, `timers`, `todos`, `music`…
+    pub kind: String,
+    pub title: String,
+    /// Taille : `1x1`, `2x1` ou `2x2`.
+    pub size: String,
+}
+
+impl TileConfig {
+    fn new(kind: &str, title: &str, size: &str) -> Self {
+        Self {
+            id: format!("{kind}-1"),
+            kind: kind.into(),
+            title: title.into(),
+            size: size.into(),
+        }
+    }
+}
+
+impl Default for Layout {
+    /// Disposition proposée au premier lancement : une tuile par module.
+    fn default() -> Self {
+        Self {
+            tiles: vec![
+                TileConfig::new("launcher", "Raccourcis", "2x1"),
+                TileConfig::new("processes", "Processeur et mémoire", "2x1"),
+                TileConfig::new("music", "Musique", "2x2"),
+                TileConfig::new("timers", "Minuteurs", "1x1"),
+                TileConfig::new("todos", "Tâches", "2x2"),
+                TileConfig::new("github", "GitHub", "1x1"),
+                TileConfig::new("gmail", "Gmail", "1x1"),
+                TileConfig::new("claude", "Claude", "1x1"),
+            ],
+        }
+    }
+}
+
+/// Raison pour laquelle un fichier n'a pas pu être lu.
+#[derive(Debug, PartialEq, Eq)]
+pub enum ParseError {
+    /// Le fichier n'est pas du JSON valide, ou son contenu est incohérent.
+    Invalid(String),
+    /// Le fichier vient d'une version plus récente de l'application.
+    TooRecent(u32),
+}
+
+/// Lit le texte d'un fichier de configuration, en le migrant si besoin.
+pub fn parse(text: &str) -> Result<Config, ParseError> {
+    let mut value: Value =
+        serde_json::from_str(text).map_err(|e| ParseError::Invalid(e.to_string()))?;
+    if !value.is_object() {
+        return Err(ParseError::Invalid(
+            "le fichier ne contient pas un objet JSON".into(),
+        ));
+    }
+    migrate(&mut value)?;
+    serde_json::from_value(value).map_err(|e| ParseError::Invalid(e.to_string()))
+}
+
+/// Fait passer un fichier de son ancienne version à [`CURRENT_VERSION`], étape par étape.
+///
+/// Pour un futur format 2 : ajouter `1 => { /* transformer value */ }` puis passer
+/// [`CURRENT_VERSION`] à 2. Chaque étape ne connaît que la version précédente.
+fn migrate(value: &mut Value) -> Result<(), ParseError> {
+    // Un fichier sans numéro de version est traité comme la version 1.
+    let mut version = value
+        .get("version")
+        .and_then(Value::as_u64)
+        .map_or(1, |v| u32::try_from(v).unwrap_or(u32::MAX));
+
+    if version > CURRENT_VERSION {
+        return Err(ParseError::TooRecent(version));
+    }
+    while version < CURRENT_VERSION {
+        // Aucune migration pour l'instant : la version 1 est la première.
+        version += 1;
+    }
+    value["version"] = Value::from(CURRENT_VERSION);
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_config_has_current_version_and_one_tile_per_module() {
+        let config = Config::default();
+        assert_eq!(config.version, CURRENT_VERSION);
+        assert!(config.general.notifications_enabled);
+        assert_eq!(config.layout.tiles.len(), 8);
+    }
+
+    #[test]
+    fn written_config_reads_back_identical() {
+        let mut config = Config::default();
+        config.general.notifications_enabled = false;
+        let text = serde_json::to_string_pretty(&config).unwrap();
+        assert!(text.contains("\"notificationsEnabled\": false"));
+        assert_eq!(parse(&text).unwrap(), config);
+    }
+
+    #[test]
+    fn missing_fields_take_default_values() {
+        let config = parse(r#"{ "version": 1, "general": {} }"#).unwrap();
+        assert!(config.general.notifications_enabled);
+        assert_eq!(config.layout, Layout::default());
+    }
+
+    #[test]
+    fn file_without_version_is_read_as_version_1() {
+        let config = parse(r#"{ "general": { "notificationsEnabled": false } }"#).unwrap();
+        assert_eq!(config.version, CURRENT_VERSION);
+        assert!(!config.general.notifications_enabled);
+    }
+
+    #[test]
+    fn rejects_invalid_json() {
+        assert!(matches!(
+            parse("{ pas du json"),
+            Err(ParseError::Invalid(_))
+        ));
+        assert!(matches!(parse("[1, 2]"), Err(ParseError::Invalid(_))));
+    }
+
+    #[test]
+    fn rejects_file_from_newer_version() {
+        let text = format!(r#"{{ "version": {} }}"#, CURRENT_VERSION + 1);
+        assert_eq!(
+            parse(&text),
+            Err(ParseError::TooRecent(CURRENT_VERSION + 1))
+        );
+    }
+}
