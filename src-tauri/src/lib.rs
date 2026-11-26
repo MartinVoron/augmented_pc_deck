@@ -2,9 +2,11 @@ pub mod error;
 pub mod logging;
 pub mod modules;
 pub mod notifications;
+pub mod tokens;
 
 use modules::{app, settings};
 use notifications::NotificationSettings;
+use tokens::TokenStore;
 
 /// Point d'entrée de l'application, appelé par `main.rs`.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -14,6 +16,7 @@ pub fn run() {
         .plugin(logging::plugin())
         .plugin(tauri_plugin_notification::init())
         .manage(NotificationSettings::default())
+        .manage(TokenStore::system())
         .invoke_handler(tauri::generate_handler![
             app::app_version,
             notifications::notifications_send,
@@ -21,6 +24,9 @@ pub fn run() {
             notifications::notifications_set_enabled,
             settings::settings_get,
             settings::settings_save,
+            tokens::tokens_status,
+            tokens::tokens_set,
+            tokens::tokens_delete,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
