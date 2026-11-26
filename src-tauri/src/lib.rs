@@ -3,7 +3,7 @@ pub mod logging;
 pub mod modules;
 pub mod notifications;
 
-use modules::app;
+use modules::{app, settings};
 use notifications::NotificationSettings;
 
 /// Point d'entrée de l'application, appelé par `main.rs`.
@@ -19,9 +19,12 @@ pub fn run() {
             notifications::notifications_send,
             notifications::notifications_is_enabled,
             notifications::notifications_set_enabled,
+            settings::settings_get,
+            settings::settings_save,
         ])
-        .setup(|_app| {
+        .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
+            settings::init(app.handle())?;
             Ok(())
         })
         .run(tauri::generate_context!())

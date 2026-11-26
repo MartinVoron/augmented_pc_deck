@@ -2,8 +2,7 @@
 //!
 //! Les modules (minuteurs, Claude, GitHub, Gmail) passent tous par [`notify`].
 //! Un interrupteur global permet de couper toutes les notifications d'un coup.
-//! Il sera enregistré dans la configuration avec l'issue #12 ; en attendant,
-//! il est remis à « activé » à chaque démarrage.
+//! Il est enregistré dans la configuration (`general.notificationsEnabled`).
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -12,6 +11,7 @@ use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::error::{AppError, AppResult};
+use crate::modules::settings::ConfigStore;
 
 /// Son joué avec la notification (sons standards de Windows).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -120,12 +120,14 @@ pub fn notifications_is_enabled(settings: State<'_, NotificationSettings>) -> Ap
     Ok(settings.is_enabled())
 }
 
-/// Active ou coupe toutes les notifications.
+/// Active ou coupe toutes les notifications, et enregistre ce choix.
 #[tauri::command]
 pub fn notifications_set_enabled(
     settings: State<'_, NotificationSettings>,
+    store: State<'_, ConfigStore>,
     enabled: bool,
 ) -> AppResult<()> {
+    store.update(|config| config.general.notifications_enabled = enabled)?;
     settings.set_enabled(enabled);
     Ok(())
 }
