@@ -49,7 +49,9 @@ impl AppError {
 }
 
 impl Serialize for AppError {
+    // Chaque erreur renvoyée à l'interface est aussi écrite dans le journal.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        log::warn!("erreur renvoyée à l'interface ({}) : {self}", self.code());
         let mut state = serializer.serialize_struct("AppError", 2)?;
         state.serialize_field("code", self.code())?;
         state.serialize_field("message", &self.to_string())?;
