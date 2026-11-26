@@ -11,7 +11,7 @@ const config = {
   version: 1,
   general: { language: "fr", notificationsEnabled: true },
   window: { alwaysOnTop: false, fullscreen: false },
-  layout: { tiles: [] },
+  layout: { tiles: DEFAULT_LAYOUT },
 };
 
 // Faux Rust qui répond normalement à chaque commande.
@@ -25,8 +25,9 @@ describe("App", () => {
     mockedInvoke.mockImplementation(backendOk);
   });
 
-  it("affiche une tuile par élément de la disposition par défaut", () => {
+  it("affiche une tuile par élément de la disposition enregistrée", async () => {
     render(App);
+    await screen.findByText("Augmented PC Deck 0.1.0");
 
     for (const tile of DEFAULT_LAYOUT) {
       expect(screen.getByRole("region", { name: tile.title })).toBeTruthy();
