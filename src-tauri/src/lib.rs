@@ -5,7 +5,7 @@ pub mod notifications;
 pub mod tokens;
 pub mod window;
 
-use modules::{app, settings};
+use modules::{app, launcher, settings};
 use notifications::NotificationSettings;
 use tokens::TokenStore;
 
@@ -33,6 +33,8 @@ pub fn run() {
             tokens::tokens_status,
             tokens::tokens_set,
             tokens::tokens_delete,
+            launcher::launcher_launch,
+            launcher::launcher_icon,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));

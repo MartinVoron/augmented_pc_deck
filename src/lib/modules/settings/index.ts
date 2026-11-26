@@ -1,5 +1,6 @@
 // Paramètres : lecture et enregistrement de la configuration (voir src-tauri/src/modules/settings).
 import { call } from "../../tauri";
+import type { Shortcut } from "../launcher";
 
 /** Une tuile de la grille, telle qu'enregistrée dans la configuration. */
 export interface TileSettings {
@@ -7,6 +8,8 @@ export interface TileSettings {
   kind: string;
   title: string;
   size: "1x1" | "2x1" | "2x2";
+  /** Raccourcis d'une tuile du lanceur. */
+  shortcuts?: Shortcut[];
 }
 
 /** Configuration complète de l'application (fichier `config.json`). */
