@@ -1,4 +1,5 @@
-//! Processus : usage du processeur, de la mémoire et des disques.
+//! Processus : usage du processeur, de la mémoire et des disques, liste des processus
+//! et arrêt d'un processus.
 //!
 //! Les mesures viennent de la crate `sysinfo`. Un seul [`ProcessMonitor`] est partagé
 //! par toutes les tuiles : l'usage du processeur se calcule entre deux appels, donc
@@ -7,7 +8,7 @@
 use std::sync::Mutex;
 
 use serde::Serialize;
-use sysinfo::{Disks, System};
+use sysinfo::{Disks, Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tauri::State;
 
 use crate::error::{AppError, AppResult};
@@ -119,6 +120,84 @@ pub async fn processes_usage(monitor: State<'_, ProcessMonitor>) -> AppResult<Us
     })
 }
 
+/// Un processus en cours d'exécution.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessInfo {
+    pub pid: u32,
+    pub name: String,
+    /// Part du processeur utilisée, en pourcentage de toute la machine (comme le
+    /// Gestionnaire des tâches), et non d'un seul cœur.
+    pub cpu: f32,
+    /// Mémoire utilisée, en octets.
+    pub memory: u64,
+}
+
+/// Ramène l'usage d'un processus (somme sur tous les cœurs) à un pourcentage de la machine.
+fn machine_percent(cpu: f32, cores: usize) -> f32 {
+    (cpu / cores.max(1) as f32).clamp(0.0, 100.0)
+}
+
+/// Liste les processus en cours. La liste n'est mesurée que quand l'interface l'affiche.
+#[tauri::command]
+pub async fn processes_list(monitor: State<'_, ProcessMonitor>) -> AppResult<Vec<ProcessInfo>> {
+    let mut system = monitor.system.lock().map_err(|_| poisoned())?;
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::nothing().with_cpu().with_memory(),
+    );
+    let cores = system.cpus().len();
+    let mut list: Vec<ProcessInfo> = system
+        .processes()
+        .values()
+        // Le processus « inactif » du système (pid 0) n'est pas un vrai programme.
+        .filter(|p| p.pid().as_u32() != 0)
+        .map(|p| ProcessInfo {
+            pid: p.pid().as_u32(),
+            name: p.name().to_string_lossy().into_owned(),
+            cpu: machine_percent(p.cpu_usage(), cores),
+            memory: p.memory(),
+        })
+        .collect();
+    list.sort_by_key(|p| std::cmp::Reverse(p.memory));
+    Ok(list)
+}
+
+/// Arrête un processus. `name` est vérifié pour ne pas arrêter un autre programme
+/// qui aurait repris le même numéro entre-temps.
+#[tauri::command]
+pub async fn processes_kill(
+    monitor: State<'_, ProcessMonitor>,
+    pid: u32,
+    name: String,
+) -> AppResult<()> {
+    if pid == std::process::id() {
+        return Err(AppError::InvalidInput(
+            "Augmented PC Deck ne peut pas s'arrêter lui-même ici : utilisez Quitter".into(),
+        ));
+    }
+    let mut system = monitor.system.lock().map_err(|_| poisoned())?;
+    let pid = Pid::from_u32(pid);
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&[pid]),
+        true,
+        ProcessRefreshKind::nothing(),
+    );
+    let process = system
+        .process(pid)
+        .filter(|p| p.name().to_string_lossy() == name)
+        .ok_or_else(|| AppError::NotFound(format!("Le processus « {name} »")))?;
+    if process.kill() {
+        log::info!("processus arrêté : {name} ({pid})");
+        Ok(())
+    } else {
+        Err(AppError::PermissionDenied(format!(
+            "Windows refuse d'arrêter « {name} ». Il faut peut-être lancer l'application en administrateur"
+        )))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,6 +235,13 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn converts_process_cpu_to_machine_percent() {
+        assert_eq!(machine_percent(200.0, 8), 25.0);
+        assert_eq!(machine_percent(50.0, 0), 50.0);
+        assert_eq!(machine_percent(900.0, 4), 100.0);
     }
 
     #[test]
