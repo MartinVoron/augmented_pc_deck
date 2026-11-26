@@ -16,6 +16,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(window::state_plugin())
         .plugin(window::autostart_plugin())
         .manage(NotificationSettings::default())
@@ -34,6 +35,7 @@ pub fn run() {
             tokens::tokens_delete,
             launcher::launcher_launch,
             launcher::launcher_icon,
+            launcher::launcher_read_image,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));

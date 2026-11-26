@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Droits de la fenêtre principale",
   "windows": ["main"],
-  "permissions": ["core:default", "log:default"]
+  "permissions": ["core:default", "log:default", "dialog:allow-open"]
 }

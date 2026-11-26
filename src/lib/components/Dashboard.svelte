@@ -4,7 +4,7 @@
   et redimensionner les tuiles. Chaque changement est enregistré tout de suite.
 -->
 <script lang="ts">
-  import { ArrowLeft, ArrowRight, Plus, Trash2 } from "@lucide/svelte";
+  import { ArrowLeft, ArrowRight, Pencil, Plus, Trash2 } from "@lucide/svelte";
   import { KIND_ACCENTS, type TileConfig, type TileKind } from "../grid/defaultLayout";
   import { KIND_ICONS } from "../grid/icons";
   import {
@@ -18,6 +18,7 @@
   } from "../grid/layout";
   import type { TileSize } from "../grid/types";
   import { settings, updateSettings } from "../modules/settings/state.svelte";
+  import ShortcutsDialog from "../modules/launcher/ShortcutsDialog.svelte";
   import Tile from "./Tile.svelte";
   import TileContent from "./TileContent.svelte";
   import TileGrid from "./TileGrid.svelte";
@@ -27,6 +28,8 @@
   let tiles = $derived(sanitizeLayout(settings.config?.layout.tiles));
   let draggedId = $state<string | null>(null);
   let newKind = $state<TileKind>("timers");
+  /** Tuile du lanceur dont on modifie les raccourcis. */
+  let shortcutsTileId = $state<string | null>(null);
 
   const SIZE_LABELS: Record<TileSize, string> = {
     "1x1": "Petite (1×1)",
@@ -104,6 +107,11 @@
             {/each}
           </select>
         </label>
+        {#if tile.kind === "launcher"}
+          <button type="button" class="shortcuts" onclick={() => (shortcutsTileId = tile.id)}>
+            <Pencil size={14} /> Raccourcis…
+          </button>
+        {/if}
         <p class="hint">Glisser pour déplacer.</p>
       {:else}
         <TileContent {tile} />
@@ -127,6 +135,10 @@
     </div>
   {/if}
 </TileGrid>
+
+{#if shortcutsTileId}
+  <ShortcutsDialog tileId={shortcutsTileId} onclose={() => (shortcutsTileId = null)} />
+{/if}
 
 {#if editing && tiles.length === 0}
   <p class="empty">La grille est vide : ajoutez une tuile.</p>
@@ -175,13 +187,22 @@
   }
 
   select,
-  .add button {
+  .add button,
+  .shortcuts {
     padding: 0.25rem 0.5rem;
     border: 1px solid var(--color-border);
     border-radius: 0.375rem;
     background: var(--color-bg);
     color: var(--color-text);
     font: inherit;
+  }
+
+  .shortcuts {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
   }
 
   .add {

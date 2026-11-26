@@ -32,6 +32,8 @@ open = "5"
 # Lanceur : icônes converties en PNG pour l'interface.
 png = "0.18"
 base64 = "0.22"
+# Lanceur : sélecteur de fichier pour choisir la cible d'un raccourci.
+tauri-plugin-dialog = "2"
 
 [dev-dependencies]
 tempfile = "3"

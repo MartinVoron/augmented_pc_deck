@@ -1,18 +1,22 @@
 <!--
-  Icône d'un raccourci : l'icône extraite de la cible par Windows,
-  ou à défaut une icône générique (globe pour une URL, fenêtre sinon).
+  Icône d'un raccourci : l'icône personnalisée, sinon l'icône extraite de la cible
+  par Windows, ou à défaut une icône générique (globe pour une URL, fenêtre sinon).
 -->
 <script lang="ts">
   import { AppWindow, Globe } from "@lucide/svelte";
   import { getIcon, isUrl } from ".";
 
-  let { target, size = 32 }: { target: string; size?: number } = $props();
+  let { target, icon, size = 32 }: { target: string; icon?: string; size?: number } = $props();
 
   let src = $state<string | null>(null);
 
   $effect(() => {
     let current = true;
     src = null;
+    if (icon) {
+      src = icon;
+      return;
+    }
     void getIcon(target).then((icon) => {
       if (current) src = icon;
     });
