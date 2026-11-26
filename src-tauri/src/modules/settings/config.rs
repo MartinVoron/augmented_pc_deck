@@ -16,6 +16,7 @@ pub const CURRENT_VERSION: u32 = 1;
 pub struct Config {
     pub version: u32,
     pub general: GeneralSettings,
+    pub window: WindowSettings,
     pub layout: Layout,
 }
 
@@ -24,6 +25,7 @@ impl Default for Config {
         Self {
             version: CURRENT_VERSION,
             general: GeneralSettings::default(),
+            window: WindowSettings::default(),
             layout: Layout::default(),
         }
     }
@@ -46,6 +48,17 @@ impl Default for GeneralSettings {
             notifications_enabled: true,
         }
     }
+}
+
+/// Options d'affichage de la fenêtre. Sa taille et sa position sont retenues à part,
+/// par le plugin `window-state` (fichier `.window-state.json`).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WindowSettings {
+    /// Fenêtre toujours au-dessus des autres.
+    pub always_on_top: bool,
+    /// Fenêtre en plein écran.
+    pub fullscreen: bool,
 }
 
 /// Disposition de la grille de tuiles.
@@ -150,6 +163,7 @@ mod tests {
         assert_eq!(config.version, CURRENT_VERSION);
         assert!(config.general.notifications_enabled);
         assert_eq!(config.general.language, "fr");
+        assert!(!config.window.always_on_top && !config.window.fullscreen);
         assert_eq!(config.layout.tiles.len(), 8);
     }
 

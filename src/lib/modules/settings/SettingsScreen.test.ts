@@ -12,6 +12,7 @@ function makeConfig(): Config {
   return {
     version: 1,
     general: { language: "fr", notificationsEnabled: true },
+    window: { alwaysOnTop: false, fullscreen: false },
     layout: { tiles: [] },
   };
 }
@@ -27,6 +28,10 @@ function fakeBackend(command: string, args?: Record<string, unknown>): Promise<u
       return Promise.resolve(args?.config);
     case "tokens_status":
       return Promise.resolve({ ...tokens });
+    case "window_autostart_get":
+      return Promise.resolve(false);
+    case "window_autostart_set":
+      return Promise.resolve();
     case "tokens_delete":
       tokens[args?.kind as string] = false;
       return Promise.resolve();
@@ -64,8 +69,23 @@ describe("SettingsScreen", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("settings_save", {
       config: expect.objectContaining({
         general: { language: "fr", notificationsEnabled: false },
+        window: { alwaysOnTop: false, fullscreen: false },
       }),
     });
+  });
+
+  it("règle la fenêtre et le démarrage avec Windows", async () => {
+    render(SettingsScreen, { onclose: () => {} });
+
+    await fireEvent.click(screen.getByRole("switch", { name: "Toujours au premier plan" }));
+    expect(mockedInvoke).toHaveBeenCalledWith("settings_save", {
+      config: expect.objectContaining({ window: { alwaysOnTop: true, fullscreen: false } }),
+    });
+
+    const autostart = screen.getByRole("switch", { name: "Lancer au démarrage de Windows" });
+    await vi.waitFor(() => expect((autostart as HTMLInputElement).disabled).toBe(false));
+    await fireEvent.click(autostart);
+    expect(mockedInvoke).toHaveBeenCalledWith("window_autostart_set", { enabled: true });
   });
 
   it("supprime un jeton après confirmation", async () => {

@@ -10,6 +10,7 @@ const mockedInvoke = vi.mocked(invoke);
 const config = {
   version: 1,
   general: { language: "fr", notificationsEnabled: true },
+  window: { alwaysOnTop: false, fullscreen: false },
   layout: { tiles: DEFAULT_LAYOUT },
 };
 

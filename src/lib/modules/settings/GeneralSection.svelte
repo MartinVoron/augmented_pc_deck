@@ -2,9 +2,27 @@
 <script lang="ts">
   import Toggle from "../../components/Toggle.svelte";
   import { sendNotification } from "../../notifications";
+  import { getAutostart, setAutostart } from ".";
   import { settings, updateSettings } from "./state.svelte";
 
   let testMessage = $state("");
+  let autostart = $state<boolean | null>(null);
+  let autostartError = $state("");
+
+  // Le lancement au démarrage est lu dans Windows, pas dans la configuration.
+  getAutostart()
+    .then((enabled) => (autostart = enabled))
+    .catch((e: Error) => (autostartError = e.message));
+
+  async function changeAutostart(enabled: boolean) {
+    try {
+      await setAutostart(enabled);
+      autostart = enabled;
+      autostartError = "";
+    } catch (e) {
+      autostartError = (e as Error).message;
+    }
+  }
 
   async function sendTest() {
     try {
@@ -46,6 +64,28 @@
     <button type="button" onclick={sendTest}>Envoyer une notification d'essai</button>
     {#if testMessage}<span class="hint" role="status">{testMessage}</span>{/if}
   </div>
+
+  <h3>Fenêtre</h3>
+  <Toggle
+    label="Toujours au premier plan"
+    checked={settings.config.window.alwaysOnTop}
+    onchange={(enabled) => updateSettings((config) => (config.window.alwaysOnTop = enabled))}
+  />
+  <Toggle
+    label="Plein écran"
+    checked={settings.config.window.fullscreen}
+    onchange={(enabled) => updateSettings((config) => (config.window.fullscreen = enabled))}
+  />
+  <p class="hint">La taille, la position et l'écran de la fenêtre sont retenus automatiquement.</p>
+
+  <h3>Démarrage</h3>
+  <Toggle
+    label="Lancer au démarrage de Windows"
+    checked={autostart ?? false}
+    disabled={autostart === null}
+    onchange={changeAutostart}
+  />
+  {#if autostartError}<p class="hint" role="alert">{autostartError}</p>{/if}
 {/if}
 
 <style>
@@ -90,6 +130,7 @@
   }
 
   .hint {
+    margin: 0;
     color: var(--color-text-muted);
     font-size: 0.875rem;
   }
