@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Check, LayoutGrid, Settings } from "@lucide/svelte";
   import Dashboard from "./lib/components/Dashboard.svelte";
+  import TitleBar from "./lib/components/TitleBar.svelte";
   import { getAppVersion } from "./lib/modules/app";
   import SettingsScreen from "./lib/modules/settings/SettingsScreen.svelte";
   import { loadSettings } from "./lib/modules/settings/state.svelte";
@@ -18,46 +19,63 @@
   void loadSettings();
 </script>
 
-{#if showSettings}
-  <SettingsScreen onclose={() => (showSettings = false)} />
-{:else}
-  <main>
-    <Dashboard {editing} />
+<div class="window">
+  <TitleBar />
+  <div class="content">
+    {#if showSettings}
+      <SettingsScreen onclose={() => (showSettings = false)} />
+    {:else}
+      <main>
+        <Dashboard {editing} />
 
-    <footer>
-      <span>
-        {#if version}
-          Augmented PC Deck {version}
-        {:else if error}
-          Le moteur Tauri n'est pas joignable : {error}
-        {/if}
-      </span>
-      <span class="buttons">
-        <button type="button" aria-pressed={editing} onclick={() => (editing = !editing)}>
-          {#if editing}
-            <Check size={16} /> Terminé
-          {:else}
-            <LayoutGrid size={16} /> Modifier la disposition
-          {/if}
-        </button>
-        <button
-          type="button"
-          aria-label="Ouvrir les paramètres"
-          onclick={() => (showSettings = true)}
-        >
-          <Settings size={16} />
-          Paramètres
-        </button>
-      </span>
-    </footer>
-  </main>
-{/if}
+        <footer>
+          <span>
+            {#if version}
+              Augmented PC Deck {version}
+            {:else if error}
+              Le moteur Tauri n'est pas joignable : {error}
+            {/if}
+          </span>
+          <span class="buttons">
+            <button type="button" aria-pressed={editing} onclick={() => (editing = !editing)}>
+              {#if editing}
+                <Check size={16} /> Terminé
+              {:else}
+                <LayoutGrid size={16} /> Modifier la disposition
+              {/if}
+            </button>
+            <button
+              type="button"
+              aria-label="Ouvrir les paramètres"
+              onclick={() => (showSettings = true)}
+            >
+              <Settings size={16} />
+              Paramètres
+            </button>
+          </span>
+        </footer>
+      </main>
+    {/if}
+  </div>
+</div>
 
 <style>
+  .window {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
   main {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    min-height: 100%;
   }
 
   footer {

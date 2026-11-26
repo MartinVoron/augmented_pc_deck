@@ -96,8 +96,14 @@ Les réglages et la disposition des tuiles sont enregistrés dans
   (pratique pour la laisser sur un second écran).
 - Paramètres > Général > Fenêtre : « Toujours au premier plan » et « Plein écran ».
 - Paramètres > Général > Démarrage : « Lancer au démarrage de Windows ».
+- La barre de titre de Windows est remplacée par une barre sombre avec trois ronds :
+  rouge pour fermer, jaune pour réduire, vert pour agrandir. On déplace la fenêtre en
+  la tenant par cette barre, et un double-clic l'agrandit.
+- Fermer (rond rouge ou Alt+F4) ne quitte pas l'application : la fenêtre se cache dans
+  la zone de notification.
 - L'icône dans la zone de notification propose Afficher, Masquer et Quitter ;
-  un clic sur l'icône affiche la fenêtre.
+  un clic sur l'icône affiche la fenêtre. Pour arrêter vraiment l'application, utiliser
+  Quitter.
 
 ## Jetons de connexion
 

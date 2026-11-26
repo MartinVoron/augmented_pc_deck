@@ -25,6 +25,7 @@ pub fn run() {
         .manage(TokenStore::system())
         .manage(ProcessMonitor::default())
         .manage(Timers::default())
+        .on_window_event(window::on_window_event)
         .invoke_handler(tauri::generate_handler![
             app::app_version,
             notifications::notifications_send,
