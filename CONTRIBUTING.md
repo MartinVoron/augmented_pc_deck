@@ -122,5 +122,48 @@ Interdits :
 
 ## 6. Versions
 
-Les versions suivent [SemVer](https://semver.org/lang/fr/) : `correction` → version corrective,
-`ajout` → version mineure, `!` → version majeure. Les étiquettes sont au format `v0.1.0`.
+Les versions suivent [SemVer](https://semver.org/lang/fr/) : `MAJEUR.MINEUR.CORRECTIF`,
+avec des étiquettes au format `v0.1.0`. **Personne ne change le numéro à la main** : il est
+calculé à partir des messages de commit (en pratique, des titres de PR fusionnées).
+
+| Commit                                   | Effet sur la version                     |
+|------------------------------------------|------------------------------------------|
+| `ajout`                                  | mineure : 0.2.0 → 0.3.0                  |
+| `correction`, `perf`, `annulation`       | corrective : 0.2.0 → 0.2.1               |
+| `!` ou `CHANGEMENT CASSANT :`            | majeure : 1.2.0 → 2.0.0 (mineure en 0.x) |
+| `doc`, `style`, `refonte`, `test`, `build`, `ci`, `maintenance` | aucune            |
+
+Tant que l'application est en 0.x, un changement cassant fait seulement monter la version
+mineure. Le passage en 1.0.0 se décide à la main (voir plus bas).
+
+**Le cycle**
+
+1. À chaque fusion sur `main`, le workflow « Version » ouvre ou met à jour une PR
+   `version/vX.Y.Z` (titre `maintenance: publier la version X.Y.Z`). Elle change le numéro
+   dans `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json` et les fichiers
+   de verrouillage, et ajoute les notes de version dans `CHANGELOG.md`.
+2. On fusionne cette PR quand on veut sortir la version (Squash and merge).
+3. Le workflow crée alors l'étiquette `vX.Y.Z`, compile l'application sous Windows et
+   publie les installateurs (`.exe` NSIS et `.msi`) dans une Release GitHub.
+
+La première version publiée est celle déjà écrite dans les fichiers (0.1.0).
+
+**Forcer un numéro** (par exemple pour la 1.0.0) : onglet *Actions* → « Version » →
+*Run workflow*, puis saisir le numéro. La PR de version est ouverte avec ce numéro.
+
+**En local**
+
+```sh
+node scripts/version/version.mjs etat       # prochaine version et notes, sans rien changer
+node scripts/version/version.mjs verifier   # même numéro dans tous les fichiers ?
+node --test scripts/version/version.test.mjs
+```
+
+**Réglages GitHub nécessaires (une fois)**
+
+- *Settings → Actions → General → Workflow permissions* : cocher
+  « Allow GitHub Actions to create and approve pull requests ».
+- Facultatif : un jeton personnel (droits *Contents* et *Pull requests* en écriture) dans le
+  secret `VERSION_TOKEN`. Sans lui, les vérifications « Conventions » ne se lancent pas sur
+  la PR de version (limite de GitHub pour le jeton par défaut) ; avec lui, elles tournent
+  normalement.
