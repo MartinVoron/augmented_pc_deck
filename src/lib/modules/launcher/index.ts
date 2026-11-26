@@ -44,3 +44,8 @@ export function getIcon(target: string): Promise<string | null> {
 export function clearIconCache(): void {
   iconCache.clear();
 }
+
+/** Lit une image choisie comme icône personnalisée (`data:` URL, 512 Ko au plus). */
+export function readImage(path: string): Promise<string> {
+  return call<string>("launcher_read_image", { path });
+}
