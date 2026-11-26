@@ -1,12 +1,20 @@
 <!--
   Tuile « Musique » : titre, artiste, pochette et progression du morceau en cours,
-  quelle que soit l'application qui joue. Interroge Windows toutes les secondes
+  quelle que soit l'application qui joue, avec lecture/pause, précédent et suivant
+  (grisés quand l'application ne les propose pas). Interroge Windows toutes les secondes
   (en pause quand la fenêtre est masquée) ; la barre avance entre deux mesures.
 -->
 <script lang="ts">
-  import { Music } from "@lucide/svelte";
+  import { Music, Pause, Play, SkipBack, SkipForward } from "@lucide/svelte";
   import { onMount } from "svelte";
-  import { currentPosition, formatTime, getNowPlaying, type NowPlaying } from ".";
+  import {
+    controlMusic,
+    currentPosition,
+    formatTime,
+    getNowPlaying,
+    type MusicAction,
+    type NowPlaying,
+  } from ".";
   import type { TileConfig } from "../../grid/defaultLayout";
   import { poll } from "../../polling";
 
@@ -17,19 +25,32 @@
   let error = $state("");
   let now = $state(Date.now());
 
-  onMount(() =>
-    poll(async () => {
-      try {
-        track = await getNowPlaying();
-        error = "";
-      } catch (e) {
-        error = (e as Error).message;
-      } finally {
-        loaded = true;
-        now = Date.now();
-      }
-    }, 1000),
-  );
+  async function refresh() {
+    try {
+      track = await getNowPlaying();
+      error = "";
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      loaded = true;
+      now = Date.now();
+    }
+  }
+
+  onMount(() => poll(refresh, 1000));
+
+  let controlError = $state("");
+
+  async function control(action: MusicAction) {
+    try {
+      await controlMusic(action);
+      controlError = "";
+      // L'application met un court instant à changer d'état.
+      setTimeout(() => void refresh(), 300);
+    } catch (e) {
+      controlError = (e as Error).message;
+    }
+  }
 
   // Fait avancer la barre en douceur pendant la lecture.
   $effect(() => {
@@ -80,6 +101,36 @@
         </span>
       </div>
     {/if}
+    <div class="controls">
+      <button
+        type="button"
+        aria-label="Morceau précédent"
+        disabled={!track.canPrevious}
+        onclick={() => control("previous")}
+      >
+        <SkipBack size={16} />
+      </button>
+      <button
+        type="button"
+        class="play"
+        aria-label={track.status === "playing" ? "Mettre en pause" : "Lecture"}
+        disabled={!track.canPlayPause}
+        onclick={() => control("playPause")}
+      >
+        {#if track.status === "playing"}<Pause size={18} />{:else}<Play size={18} />{/if}
+      </button>
+      <button
+        type="button"
+        aria-label="Morceau suivant"
+        disabled={!track.canNext}
+        onclick={() => control("next")}
+      >
+        <SkipForward size={16} />
+      </button>
+    </div>
+    {#if controlError}
+      <p class="control-error" role="alert">{controlError}</p>
+    {/if}
   </div>
 {:else if error}
   <p class="error" role="alert">{error}</p>
@@ -95,7 +146,9 @@
     display: grid;
     grid-template-areas:
       "cover info"
-      "progress progress";
+      "progress progress"
+      "controls controls"
+      "message message";
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 0.35rem 0.6rem;
@@ -105,8 +158,11 @@
     grid-template-areas:
       "cover"
       "info"
-      "progress";
+      "progress"
+      "controls"
+      "message";
     grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
     justify-items: center;
     text-align: center;
   }
@@ -124,7 +180,7 @@
   }
 
   .music[data-size="2x2"] .cover {
-    width: min(9rem, 100%);
+    width: min(5.5rem, 100%);
     box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
   }
 
@@ -194,6 +250,52 @@
     justify-content: space-between;
     font-size: 0.68rem;
     font-variant-numeric: tabular-nums;
+  }
+
+  .controls {
+    grid-area: controls;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .controls button {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .controls button:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
+
+  .controls .play {
+    background: var(--tile-color);
+    color: #fff;
+  }
+
+  .controls .play:hover:not(:disabled) {
+    background: var(--tile-color);
+    filter: brightness(1.1);
+  }
+
+  .controls button:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .control-error {
+    grid-area: message;
+    color: #f1c4c4;
+    font-size: 0.72rem;
   }
 
   .empty {

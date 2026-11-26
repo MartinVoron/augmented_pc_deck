@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { currentPosition, formatTime, type NowPlaying } from ".";
 import type { TileConfig } from "../../grid/defaultLayout";
@@ -52,5 +52,46 @@ describe("MusicTile", () => {
     expect(currentPosition(playing, 10_000_000)).toBe(300_000);
     expect(currentPosition(track, 11_000)).toBe(95_000);
     expect(formatTime(3_723_000)).toBe("1:02:03");
+  });
+});
+
+describe("MusicTile, contrôles", () => {
+  beforeEach(() => {
+    mockedInvoke.mockReset();
+    mockedInvoke.mockImplementation((command) =>
+      command === "music_now_playing" ? Promise.resolve(track) : Promise.resolve(null),
+    );
+  });
+
+  it("envoie lecture/pause et suivant à l'application", async () => {
+    render(MusicTile, { tile });
+
+    await fireEvent.click(await screen.findByRole("button", { name: "Lecture" }));
+    expect(mockedInvoke).toHaveBeenCalledWith("music_control", { action: "playPause" });
+
+    await fireEvent.click(screen.getByRole("button", { name: "Morceau suivant" }));
+    expect(mockedInvoke).toHaveBeenCalledWith("music_control", { action: "next" });
+  });
+
+  it("grise les boutons que la source ne propose pas", async () => {
+    render(MusicTile, { tile });
+
+    const previous = await screen.findByRole("button", { name: "Morceau précédent" });
+    expect((previous as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Morceau suivant" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it("affiche un message si l'application refuse", async () => {
+    mockedInvoke.mockImplementation((command) =>
+      command === "music_now_playing"
+        ? Promise.resolve(track)
+        : Promise.reject({ code: "permission_denied", message: "commande refusée" }),
+    );
+    render(MusicTile, { tile });
+
+    await fireEvent.click(await screen.findByRole("button", { name: "Lecture" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("commande refusée");
   });
 });
