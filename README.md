@@ -83,6 +83,13 @@ public/                   fichiers statiques de l'interface
 - **Rust** : un bloc `#[cfg(test)] mod tests` à la fin du fichier testé (exemple :
   `src-tauri/src/error.rs`). `npm run test:rust` les lance seuls.
 
+## Intégration continue
+
+À chaque PR, le workflow [CI](.github/workflows/ci.yml) vérifie le projet sur une machine
+Windows : `npm run lint`, `npm run check`, les tests de l'interface et du Rust, puis la
+compilation de l'application. Il échoue dès qu'une étape échoue. Les dépendances npm et la
+compilation Rust sont mises en cache pour aller plus vite.
+
 ## Contribuer
 
 Les règles de travail (issues, branches, commits en français, PR) sont dans
