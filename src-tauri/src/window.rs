@@ -4,7 +4,7 @@
 use tauri::menu::{Menu, MenuItem};
 use tauri::plugin::TauriPlugin;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, Window, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_window_state::StateFlags;
 
@@ -37,6 +37,20 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) {
     }
     if let Err(e) = window.set_fullscreen(settings.fullscreen) {
         log::warn!("impossible de régler le plein écran : {e}");
+    }
+}
+
+/// Fermer la fenêtre principale (rond rouge, Alt+F4) la masque dans la zone de
+/// notification au lieu de quitter : les minuteurs et notifications continuent.
+/// Pour quitter, utiliser « Quitter » dans le menu de l'icône.
+pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
+    if let WindowEvent::CloseRequested { api, .. } = event {
+        if window.label() == MAIN {
+            api.prevent_close();
+            if let Err(e) = window.hide() {
+                log::warn!("impossible de masquer la fenêtre : {e}");
+            }
+        }
     }
 }
 

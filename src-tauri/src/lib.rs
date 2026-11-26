@@ -20,6 +20,7 @@ pub fn run() {
         .plugin(window::autostart_plugin())
         .manage(NotificationSettings::default())
         .manage(TokenStore::system())
+        .on_window_event(window::on_window_event)
         .invoke_handler(tauri::generate_handler![
             app::app_version,
             notifications::notifications_send,
