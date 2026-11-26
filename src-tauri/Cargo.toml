@@ -36,6 +36,8 @@ base64 = "0.22"
 tauri-plugin-dialog = "2"
 # Processus : usage du processeur, de la mémoire et des disques.
 sysinfo = { version = "0.36.1", default-features = false, features = ["system", "disk"] }
+# Minuteurs : attente de la fin d'un compte à rebours, sans bloquer.
+tokio = { version = "1", features = ["time"] }
 
 [dev-dependencies]
 tempfile = "3"
