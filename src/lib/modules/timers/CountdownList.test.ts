@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatDuration, remainingMs, type TimerRuns } from ".";
 import type { TileConfig } from "../../grid/defaultLayout";
-import TimersTile from "./TimersTile.svelte";
+import CountdownList from "./CountdownList.svelte";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
@@ -23,7 +23,7 @@ const tile: TileConfig = {
 
 let runs: TimerRuns;
 
-describe("TimersTile", () => {
+describe("CountdownList", () => {
   beforeEach(() => {
     runs = {
       "timers-1:minuteur-2": {
@@ -49,7 +49,7 @@ describe("TimersTile", () => {
   });
 
   it("affiche le temps restant de chaque minuteur", async () => {
-    render(TimersTile, { tile });
+    render(CountdownList, { tile });
 
     expect(screen.getByRole("timer", { name: "Temps restant de Thé" }).textContent).toBe("4:00");
     expect(
@@ -61,7 +61,7 @@ describe("TimersTile", () => {
   });
 
   it("démarre, met en pause et remet à zéro", async () => {
-    render(TimersTile, { tile });
+    render(CountdownList, { tile });
     await screen.findByRole("button", { name: "Mettre en pause Pâtes" });
 
     await fireEvent.click(screen.getByRole("button", { name: "Démarrer Thé" }));
@@ -69,6 +69,7 @@ describe("TimersTile", () => {
       key: "timers-1:minuteur-1",
       name: "Thé",
       durationMs: 240_000,
+      alert: null,
     });
 
     await fireEvent.click(screen.getByRole("button", { name: "Mettre en pause Pâtes" }));

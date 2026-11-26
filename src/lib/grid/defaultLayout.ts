@@ -1,5 +1,6 @@
 import type { Shortcut } from "../modules/launcher";
 import type { TimerSettings } from "../modules/timers";
+import type { PomodoroSettings } from "../modules/timers/pomodoro";
 import type { TileAccent, TileSize } from "./types";
 
 /** Module affiché par une tuile. */
@@ -15,6 +16,8 @@ export interface TileConfig {
   shortcuts?: Shortcut[];
   /** Comptes à rebours d'une tuile des minuteurs. */
   timers?: TimerSettings[];
+  /** Durées du mode Pomodoro d'une tuile des minuteurs. */
+  pomodoro?: PomodoroSettings;
 }
 
 /** Couleur d'accent de chaque module. */
