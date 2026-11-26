@@ -59,6 +59,9 @@ src/
   App.svelte              écran principal
   lib/tauri.ts            fonction call() pour appeler le Rust
   lib/notifications.ts    envoi des notifications Windows
+  lib/theme.css           palette du thème sombre (variables CSS)
+  lib/grid/               tailles, icônes et disposition par défaut des tuiles
+  lib/components/         composants communs : grille, tuile, protection des tuiles
   lib/modules/<module>/   composants et appels Tauri d'un module
 src-tauri/
   src/error.rs            erreur commune renvoyée à l'interface
