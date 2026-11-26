@@ -1,0 +1,60 @@
+name: CI
+
+# Vérifie chaque PR (et main) sur une machine Windows : lint, types, tests et compilation.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Un nouvel envoi sur la même PR annule la vérification en cours.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      # Garde les fins de ligne LF du dépôt, sinon Prettier signale tous les fichiers.
+      - name: Garder les fins de ligne LF
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Installer Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Mettre en cache la compilation Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Installer les dépendances npm
+        run: npm ci
+
+      - name: Lint (ESLint, Prettier, cargo fmt, cargo clippy)
+        run: npm run lint
+
+      - name: Types (svelte-check)
+        run: npm run check
+
+      - name: Tests de l'interface (Vitest)
+        run: npm run test:front
+
+      - name: Tests Rust (cargo test)
+        run: npm run test:rust
+
+      - name: Compiler l'application
+        run: npm run tauri build -- --no-bundle
