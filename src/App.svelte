@@ -1,9 +1,6 @@
 <script lang="ts">
-  import { Settings } from "@lucide/svelte";
-  import Tile from "./lib/components/Tile.svelte";
-  import TileGrid from "./lib/components/TileGrid.svelte";
-  import { DEFAULT_LAYOUT, KIND_ACCENTS } from "./lib/grid/defaultLayout";
-  import { KIND_ICONS } from "./lib/grid/icons";
+  import { Check, LayoutGrid, Settings } from "@lucide/svelte";
+  import Dashboard from "./lib/components/Dashboard.svelte";
   import { getAppVersion } from "./lib/modules/app";
   import SettingsScreen from "./lib/modules/settings/SettingsScreen.svelte";
   import { loadSettings } from "./lib/modules/settings/state.svelte";
@@ -11,6 +8,7 @@
   let version = $state("");
   let error = $state("");
   let showSettings = $state(false);
+  let editing = $state(false);
 
   // Vérifie que l'interface et le Rust communiquent bien.
   getAppVersion()
@@ -24,18 +22,7 @@
   <SettingsScreen onclose={() => (showSettings = false)} />
 {:else}
   <main>
-    <TileGrid>
-      {#each DEFAULT_LAYOUT as tile (tile.id)}
-        <Tile
-          title={tile.title}
-          size={tile.size}
-          accent={KIND_ACCENTS[tile.kind]}
-          icon={KIND_ICONS[tile.kind]}
-        >
-          <p class="placeholder">Bientôt disponible</p>
-        </Tile>
-      {/each}
-    </TileGrid>
+    <Dashboard {editing} />
 
     <footer>
       <span>
@@ -45,14 +32,23 @@
           Le moteur Tauri n'est pas joignable : {error}
         {/if}
       </span>
-      <button
-        type="button"
-        aria-label="Ouvrir les paramètres"
-        onclick={() => (showSettings = true)}
-      >
-        <Settings size={16} />
-        Paramètres
-      </button>
+      <span class="buttons">
+        <button type="button" aria-pressed={editing} onclick={() => (editing = !editing)}>
+          {#if editing}
+            <Check size={16} /> Terminé
+          {:else}
+            <LayoutGrid size={16} /> Modifier la disposition
+          {/if}
+        </button>
+        <button
+          type="button"
+          aria-label="Ouvrir les paramètres"
+          onclick={() => (showSettings = true)}
+        >
+          <Settings size={16} />
+          Paramètres
+        </button>
+      </span>
     </footer>
   </main>
 {/if}
@@ -88,12 +84,18 @@
     cursor: pointer;
   }
 
+  footer button[aria-pressed="true"] {
+    border-color: var(--color-accent);
+    color: var(--color-text);
+  }
+
   footer button:hover {
     background: var(--color-surface-hover);
     color: var(--color-text);
   }
 
-  .placeholder {
-    margin: 0;
+  .buttons {
+    display: flex;
+    gap: 0.5rem;
   }
 </style>

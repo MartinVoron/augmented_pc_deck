@@ -4,10 +4,11 @@
 -->
 <script lang="ts">
   import type { Component, Snippet } from "svelte";
+  import type { HTMLAttributes } from "svelte/elements";
   import { TILE_SPANS, type TileAccent, type TileSize } from "../grid/types";
   import TileBoundary from "./TileBoundary.svelte";
 
-  interface Props {
+  interface Props extends Omit<HTMLAttributes<HTMLElement>, "title" | "children"> {
     title: string;
     size?: TileSize;
     accent?: TileAccent;
@@ -16,12 +17,13 @@
     children?: Snippet;
   }
 
-  let { title, size = "1x1", accent = "accent", icon: Icon, children }: Props = $props();
+  let { title, size = "1x1", accent = "accent", icon: Icon, children, ...rest }: Props = $props();
 
   let span = $derived(TILE_SPANS[size]);
 </script>
 
 <section
+  {...rest}
   class="tile"
   data-size={size}
   style:grid-column="span {span.columns}"
