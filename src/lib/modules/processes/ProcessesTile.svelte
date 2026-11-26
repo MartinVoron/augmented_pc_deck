@@ -6,6 +6,8 @@
   import { onMount } from "svelte";
   import { formatBytes, getUsage, percent, type Usage } from ".";
   import { poll } from "../../polling";
+  import { ListTree } from "@lucide/svelte";
+  import ProcessesDialog from "./ProcessesDialog.svelte";
   import UsageBar from "./UsageBar.svelte";
 
   /** Intervalle de rafraîchissement, en millisecondes. */
@@ -13,6 +15,7 @@
 
   let usage = $state<Usage | null>(null);
   let error = $state("");
+  let showList = $state(false);
 
   onMount(() =>
     poll(async () => {
@@ -48,6 +51,14 @@
   <p class="loading">Mesure en cours…</p>
 {/if}
 
+<button type="button" class="list" onclick={() => (showList = true)}>
+  <ListTree size={14} /> Voir les processus
+</button>
+
+{#if showList}
+  <ProcessesDialog onclose={() => (showList = false)} />
+{/if}
+
 <style>
   .usage {
     display: grid;
@@ -63,5 +74,25 @@
 
   .error {
     color: #f1c4c4;
+  }
+
+  .list {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .list:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
   }
 </style>
