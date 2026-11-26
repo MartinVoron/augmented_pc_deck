@@ -1,4 +1,5 @@
 pub mod error;
+pub mod logging;
 pub mod modules;
 pub mod notifications;
 
@@ -8,7 +9,9 @@ use notifications::NotificationSettings;
 /// Point d'entrée de l'application, appelé par `main.rs`.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    logging::log_panics();
     tauri::Builder::default()
+        .plugin(logging::plugin())
         .plugin(tauri_plugin_notification::init())
         .manage(NotificationSettings::default())
         .invoke_handler(tauri::generate_handler![
@@ -17,6 +20,10 @@ pub fn run() {
             notifications::notifications_is_enabled,
             notifications::notifications_set_enabled,
         ])
+        .setup(|_app| {
+            log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("impossible de démarrer l'application");
 }

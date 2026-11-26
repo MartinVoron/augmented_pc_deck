@@ -77,6 +77,16 @@ public/                   fichiers statiques de l'interface
 - Côté interface, on n'utilise jamais `invoke` directement mais `call()` de
   `src/lib/tauri.ts`, qui transforme l'échec en `AppError` (avec `code` et `message`).
 
+## Journal des erreurs
+
+Les messages de l'application et les erreurs (Rust et interface) sont écrits dans
+`%LOCALAPPDATA%\fr.martinvoron.augmented-pc-deck\logs\augmented-pc-deck.log`.
+Au-delà de 1 Mo, le fichier est archivé et un nouveau commence ; les 5 derniers sont gardés.
+
+Pour qu'une tuile en panne ne fasse pas planter l'application, son contenu est placé dans
+le composant `TileBoundary` (`src/lib/components/TileBoundary.svelte`) : l'erreur est écrite
+dans le journal et la tuile affiche un message clair avec un bouton « Réessayer ».
+
 ## Tests
 
 - **Interface** : fichiers `*.test.ts` à côté du code testé (exemples : `src/lib/tauri.test.ts`,
