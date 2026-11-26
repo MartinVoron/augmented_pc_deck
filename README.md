@@ -36,6 +36,8 @@ npm install
 | `npm run tauri dev`   | Lance l'application en mode développement (rechargement à chaud) |
 | `npm run tauri build` | Produit l'exécutable et les installateurs Windows                |
 | `npm run check`       | Vérifie les types TypeScript et Svelte                           |
+| `npm run lint`        | Vérifie le style : ESLint, Prettier, `cargo fmt` et `cargo clippy` |
+| `npm run format`      | Met en forme tout le code (Prettier et `cargo fmt`)              |
 | `npm run build`       | Compile seulement l'interface (dossier `dist/`)                  |
 
 Après `npm run tauri build`, on trouve :
@@ -47,11 +49,30 @@ La première compilation Rust prend quelques minutes, les suivantes sont bien pl
 
 ## Organisation du code
 
+Chaque fonctionnalité a sa place, côté Rust et côté interface, avec le même nom anglais :
+`launcher` (lanceur), `processes` (processus), `timers` (minuteurs), `todos` (tâches),
+`music` (musique), `github`, `gmail`, `claude` et `settings` (paramètres).
+
 ```
-src/          interface Svelte (TypeScript)
-src-tauri/    application Tauri (Rust) : commandes, configuration, icônes
-public/       fichiers statiques de l'interface
+src/
+  App.svelte              écran principal
+  lib/tauri.ts            fonction call() pour appeler le Rust
+  lib/modules/<module>/   composants et appels Tauri d'un module
+src-tauri/
+  src/error.rs            erreur commune renvoyée à l'interface
+  src/modules/<module>.rs commandes Tauri d'un module
+  tauri.conf.json         configuration de la fenêtre et de l'installateur
+public/                   fichiers statiques de l'interface
 ```
+
+### Convention pour les commandes Tauri
+
+- Côté Rust, une commande s'appelle `<module>_<action>` (par exemple `timers_start`),
+  renvoie toujours un `AppResult<T>` et est déclarée dans `src-tauri/src/lib.rs`.
+- En cas d'échec, l'interface reçoit `{ "code": "not_found", "message": "…" }` :
+  le `code` est stable pour le code, le `message` est en français, prêt à afficher.
+- Côté interface, on n'utilise jamais `invoke` directement mais `call()` de
+  `src/lib/tauri.ts`, qui transforme l'échec en `AppError` (avec `code` et `message`).
 
 ## Contribuer
 
