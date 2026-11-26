@@ -13,6 +13,8 @@ export interface TileSettings {
 export interface Config {
   version: number;
   general: {
+    /** Langue de l'interface (`fr` uniquement pour l'instant). */
+    language: string;
     notificationsEnabled: boolean;
   };
   layout: {

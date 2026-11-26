@@ -33,6 +33,8 @@ impl Default for Config {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct GeneralSettings {
+    /// Langue de l'interface (`fr` uniquement pour l'instant).
+    pub language: String,
     /// Notifications Windows activées pour toute l'application.
     pub notifications_enabled: bool,
 }
@@ -40,6 +42,7 @@ pub struct GeneralSettings {
 impl Default for GeneralSettings {
     fn default() -> Self {
         Self {
+            language: "fr".into(),
             notifications_enabled: true,
         }
     }
@@ -146,6 +149,7 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.version, CURRENT_VERSION);
         assert!(config.general.notifications_enabled);
+        assert_eq!(config.general.language, "fr");
         assert_eq!(config.layout.tiles.len(), 8);
     }
 
