@@ -77,6 +77,14 @@ public/                   fichiers statiques de l'interface
 - Côté interface, on n'utilise jamais `invoke` directement mais `call()` de
   `src/lib/tauri.ts`, qui transforme l'échec en `AppError` (avec `code` et `message`).
 
+## Jetons de connexion
+
+Les jetons GitHub, Gmail et Claude ne sont jamais écrits dans un fichier de l'application
+ni dans le journal. Ils sont rangés dans le **Gestionnaire d'identification Windows**
+(Panneau de configuration > Gestionnaire d'identification > Informations d'identification
+Windows), sous le nom `augmented-pc-deck`. L'interface peut enregistrer ou supprimer un
+jeton, mais jamais le relire : seul le Rust s'en sert (`src-tauri/src/tokens.rs`).
+
 ## Journal des erreurs
 
 Les messages de l'application et les erreurs (Rust et interface) sont écrits dans
