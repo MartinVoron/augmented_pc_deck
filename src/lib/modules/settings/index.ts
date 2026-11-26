@@ -17,6 +17,11 @@ export interface Config {
     language: string;
     notificationsEnabled: boolean;
   };
+  window: {
+    /** Fenêtre toujours au-dessus des autres. */
+    alwaysOnTop: boolean;
+    fullscreen: boolean;
+  };
   layout: {
     tiles: TileSettings[];
   };
@@ -30,4 +35,14 @@ export function getSettings(): Promise<Config> {
 /** Enregistre la configuration ; elle s'applique tout de suite. */
 export function saveSettings(config: Config): Promise<Config> {
   return call<Config>("settings_save", { config });
+}
+
+/** Indique si l'application se lance au démarrage de Windows. */
+export function getAutostart(): Promise<boolean> {
+  return call<boolean>("window_autostart_get");
+}
+
+/** Active ou désactive le lancement au démarrage de Windows. */
+export function setAutostart(enabled: boolean): Promise<void> {
+  return call<void>("window_autostart_set", { enabled });
 }
