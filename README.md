@@ -58,9 +58,11 @@ Chaque fonctionnalité a sa place, côté Rust et côté interface, avec le mêm
 src/
   App.svelte              écran principal
   lib/tauri.ts            fonction call() pour appeler le Rust
+  lib/notifications.ts    envoi des notifications Windows
   lib/modules/<module>/   composants et appels Tauri d'un module
 src-tauri/
   src/error.rs            erreur commune renvoyée à l'interface
+  src/notifications.rs    service commun des notifications Windows
   src/modules/<module>.rs commandes Tauri d'un module
   tauri.conf.json         configuration de la fenêtre et de l'installateur
 public/                   fichiers statiques de l'interface
