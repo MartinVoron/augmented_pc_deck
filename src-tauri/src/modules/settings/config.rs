@@ -81,6 +81,19 @@ pub struct TileConfig {
     /// Raccourcis d'une tuile du lanceur (vide pour les autres modules).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub shortcuts: Vec<Shortcut>,
+    /// Comptes à rebours d'une tuile des minuteurs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub timers: Vec<TimerSettings>,
+}
+
+/// Un compte à rebours enregistré (son nom et sa durée ; l'état en cours n'est pas gardé).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimerSettings {
+    pub id: String,
+    pub name: String,
+    /// Durée, en secondes.
+    pub duration_secs: u64,
 }
 
 /// Un raccourci de la tuile du lanceur.
@@ -108,6 +121,7 @@ impl TileConfig {
             title: title.into(),
             size: size.into(),
             shortcuts: Vec::new(),
+            timers: Vec::new(),
         }
     }
 }
@@ -218,6 +232,16 @@ mod tests {
         // Une tuile sans raccourci n'écrit pas de liste vide dans le fichier.
         let written = serde_json::to_string(&config).unwrap();
         assert_eq!(written.matches("shortcuts").count(), 1);
+    }
+
+    #[test]
+    fn timers_tile_keeps_its_countdowns() {
+        let text = r#"{ "layout": { "tiles": [{
+            "id": "timers-1", "kind": "timers", "title": "Minuteurs", "size": "1x1",
+            "timers": [{ "id": "minuteur-1", "name": "Thé", "durationSecs": 240 }]
+        }] } }"#;
+        let config = parse(text).unwrap();
+        assert_eq!(config.layout.tiles[0].timers[0].duration_secs, 240);
     }
 
     #[test]

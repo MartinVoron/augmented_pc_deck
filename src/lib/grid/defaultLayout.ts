@@ -1,4 +1,5 @@
 import type { Shortcut } from "../modules/launcher";
+import type { TimerSettings } from "../modules/timers";
 import type { TileAccent, TileSize } from "./types";
 
 /** Module affiché par une tuile. */
@@ -12,6 +13,8 @@ export interface TileConfig {
   size: TileSize;
   /** Raccourcis d'une tuile du lanceur. */
   shortcuts?: Shortcut[];
+  /** Comptes à rebours d'une tuile des minuteurs. */
+  timers?: TimerSettings[];
 }
 
 /** Couleur d'accent de chaque module. */
