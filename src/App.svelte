@@ -1,43 +1,57 @@
 <script lang="ts">
+  import Tile from "./lib/components/Tile.svelte";
+  import TileGrid from "./lib/components/TileGrid.svelte";
+  import { DEFAULT_LAYOUT, KIND_ACCENTS } from "./lib/grid/defaultLayout";
+  import { KIND_ICONS } from "./lib/grid/icons";
   import { getAppVersion } from "./lib/modules/app";
 
   let version = $state("");
   let error = $state("");
 
-  // Vérifie que le front et le Rust communiquent bien.
+  // Vérifie que l'interface et le Rust communiquent bien.
   getAppVersion()
     .then((v) => (version = v))
     .catch((e: Error) => (error = e.message));
 </script>
 
 <main>
-  <h1>Augmented PC Deck</h1>
-  <p>Le socle de l'application est prêt.</p>
-  {#if version}
-    <p class="info">Version {version}</p>
-  {:else if error}
-    <p class="info">Le moteur Tauri n'est pas joignable : {error}</p>
-  {/if}
+  <TileGrid>
+    {#each DEFAULT_LAYOUT as tile (tile.id)}
+      <Tile
+        title={tile.title}
+        size={tile.size}
+        accent={KIND_ACCENTS[tile.kind]}
+        icon={KIND_ICONS[tile.kind]}
+      >
+        <p class="placeholder">Bientôt disponible</p>
+      </Tile>
+    {/each}
+  </TileGrid>
+
+  <footer>
+    {#if version}
+      Augmented PC Deck {version}
+    {:else if error}
+      Le moteur Tauri n'est pas joignable : {error}
+    {/if}
+  </footer>
 </main>
 
 <style>
   main {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
     min-height: 100vh;
-    padding: 1rem;
-    text-align: center;
   }
 
-  h1 {
-    margin: 0 0 0.5rem;
-    font-size: 2rem;
+  footer {
+    margin-top: auto;
+    padding: 0.5rem var(--tile-gap);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
   }
 
-  .info {
-    color: #9aa0a6;
-    font-size: 0.875rem;
+  .placeholder {
+    margin: 0;
   }
 </style>
