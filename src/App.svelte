@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { getAppVersion } from "./lib/modules/app";
 
   let version = $state("");
-  let erreur = $state("");
+  let error = $state("");
 
   // Vérifie que le front et le Rust communiquent bien.
-  invoke<string>("app_version")
+  getAppVersion()
     .then((v) => (version = v))
-    .catch((e) => (erreur = String(e)));
+    .catch((e: Error) => (error = e.message));
 </script>
 
 <main>
@@ -15,8 +15,8 @@
   <p>Le socle de l'application est prêt.</p>
   {#if version}
     <p class="info">Version {version}</p>
-  {:else if erreur}
-    <p class="info">Le moteur Tauri n'est pas joignable : {erreur}</p>
+  {:else if error}
+    <p class="info">Le moteur Tauri n'est pas joignable : {error}</p>
   {/if}
 </main>
 

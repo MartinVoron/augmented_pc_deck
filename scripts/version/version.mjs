@@ -302,7 +302,7 @@ export function ecrireVersion(racine, version) {
     try {
       writeFileSync(f.chemin, f.ecrire(texte, version));
     } catch (erreur) {
-      throw new Error(`${f.fichier} : ${erreur.message}`);
+      throw new Error(`${f.fichier} : ${erreur.message}`, { cause: erreur });
     }
     modifies.push(f.fichier);
   }
