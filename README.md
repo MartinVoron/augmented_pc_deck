@@ -90,6 +90,15 @@ Les réglages et la disposition des tuiles sont enregistrés dans
 - Si le fichier est abîmé (ou vient d'une version plus récente), il est mis de côté sous
   le nom `config.json.<horodatage>.bak` et l'application démarre avec les valeurs par défaut.
 
+## Fenêtre
+
+- La taille, la position et l'écran de la fenêtre sont retenus d'un lancement à l'autre
+  (pratique pour la laisser sur un second écran).
+- Paramètres > Général > Fenêtre : « Toujours au premier plan » et « Plein écran ».
+- Paramètres > Général > Démarrage : « Lancer au démarrage de Windows ».
+- L'icône dans la zone de notification propose Afficher, Masquer et Quitter ;
+  un clic sur l'icône affiche la fenêtre.
+
 ## Jetons de connexion
 
 Les jetons GitHub, Gmail et Claude ne sont jamais écrits dans un fichier de l'application
