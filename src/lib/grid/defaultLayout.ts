@@ -1,3 +1,4 @@
+import type { Shortcut } from "../modules/launcher";
 import type { TileAccent, TileSize } from "./types";
 
 /** Module affiché par une tuile. */
@@ -9,6 +10,8 @@ export interface TileConfig {
   kind: TileKind;
   title: string;
   size: TileSize;
+  /** Raccourcis d'une tuile du lanceur. */
+  shortcuts?: Shortcut[];
 }
 
 /** Couleur d'accent de chaque module. */

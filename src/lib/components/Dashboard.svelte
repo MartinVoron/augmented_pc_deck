@@ -19,6 +19,7 @@
   import type { TileSize } from "../grid/types";
   import { settings, updateSettings } from "../modules/settings/state.svelte";
   import Tile from "./Tile.svelte";
+  import TileContent from "./TileContent.svelte";
   import TileGrid from "./TileGrid.svelte";
 
   let { editing = false }: { editing?: boolean } = $props();
@@ -105,7 +106,7 @@
         </label>
         <p class="hint">Glisser pour déplacer.</p>
       {:else}
-        <p class="hint">Bientôt disponible</p>
+        <TileContent {tile} />
       {/if}
     </Tile>
   {/each}
