@@ -78,6 +78,26 @@ pub struct TileConfig {
     pub title: String,
     /// Taille : `1x1`, `2x1` ou `2x2`.
     pub size: String,
+    /// Raccourcis d'une tuile du lanceur (vide pour les autres modules).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub shortcuts: Vec<Shortcut>,
+}
+
+/// Un raccourci de la tuile du lanceur.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Shortcut {
+    pub id: String,
+    /// Nom affiché sous l'icône.
+    pub name: String,
+    /// Programme, fichier, dossier ou URL à ouvrir.
+    pub target: String,
+    /// Arguments de lancement d'un programme, comme sur une ligne de commande.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub args: String,
+    /// Image choisie à la place de l'icône extraite de la cible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
 }
 
 impl TileConfig {
@@ -87,6 +107,7 @@ impl TileConfig {
             kind: kind.into(),
             title: title.into(),
             size: size.into(),
+            shortcuts: Vec::new(),
         }
     }
 }
@@ -181,6 +202,22 @@ mod tests {
         let config = parse(r#"{ "version": 1, "general": {} }"#).unwrap();
         assert!(config.general.notifications_enabled);
         assert_eq!(config.layout, Layout::default());
+    }
+
+    #[test]
+    fn launcher_tile_keeps_its_shortcuts() {
+        let text = r#"{ "layout": { "tiles": [{
+            "id": "launcher-1", "kind": "launcher", "title": "Raccourcis", "size": "2x1",
+            "shortcuts": [{ "id": "s1", "name": "Bloc-notes", "target": "C:\\Windows\\notepad.exe" }]
+        }, { "id": "timers-1", "kind": "timers", "title": "Minuteurs", "size": "1x1" }] } }"#;
+        let config = parse(text).unwrap();
+        let shortcut = &config.layout.tiles[0].shortcuts[0];
+        assert_eq!(shortcut.name, "Bloc-notes");
+        assert_eq!(shortcut.args, "");
+        assert!(config.layout.tiles[1].shortcuts.is_empty());
+        // Une tuile sans raccourci n'écrit pas de liste vide dans le fichier.
+        let written = serde_json::to_string(&config).unwrap();
+        assert_eq!(written.matches("shortcuts").count(), 1);
     }
 
     #[test]
