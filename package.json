@@ -18,7 +18,8 @@
     "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.12.5"
+    "@tauri-apps/api": "^2.12.5",
+    "@tauri-apps/plugin-log": "^2.10.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
