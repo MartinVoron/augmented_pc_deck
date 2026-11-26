@@ -3,6 +3,7 @@ pub mod logging;
 pub mod modules;
 pub mod notifications;
 pub mod tokens;
+pub mod window;
 
 use modules::{app, settings};
 use notifications::NotificationSettings;
@@ -15,6 +16,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_notification::init())
+        .plugin(window::state_plugin())
+        .plugin(window::autostart_plugin())
         .manage(NotificationSettings::default())
         .manage(TokenStore::system())
         .invoke_handler(tauri::generate_handler![
@@ -24,6 +27,8 @@ pub fn run() {
             notifications::notifications_set_enabled,
             settings::settings_get,
             settings::settings_save,
+            window::window_autostart_get,
+            window::window_autostart_set,
             tokens::tokens_status,
             tokens::tokens_set,
             tokens::tokens_delete,
@@ -31,6 +36,7 @@ pub fn run() {
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
             settings::init(app.handle())?;
+            window::create_tray(app.handle())?;
             Ok(())
         })
         .run(tauri::generate_context!())
