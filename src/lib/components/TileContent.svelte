@@ -4,12 +4,15 @@
 <script lang="ts">
   import type { TileConfig } from "../grid/defaultLayout";
   import LauncherTile from "../modules/launcher/LauncherTile.svelte";
+  import ProcessesTile from "../modules/processes/ProcessesTile.svelte";
 
   let { tile }: { tile: TileConfig } = $props();
 </script>
 
 {#if tile.kind === "launcher"}
   <LauncherTile {tile} />
+{:else if tile.kind === "processes"}
+  <ProcessesTile />
 {:else}
   <p class="soon">Bientôt disponible</p>
 {/if}

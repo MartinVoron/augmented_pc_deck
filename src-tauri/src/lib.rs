@@ -5,6 +5,7 @@ pub mod notifications;
 pub mod tokens;
 pub mod window;
 
+use modules::processes::{self, ProcessMonitor};
 use modules::{app, launcher, settings};
 use notifications::NotificationSettings;
 use tokens::TokenStore;
@@ -21,6 +22,7 @@ pub fn run() {
         .plugin(window::autostart_plugin())
         .manage(NotificationSettings::default())
         .manage(TokenStore::system())
+        .manage(ProcessMonitor::default())
         .invoke_handler(tauri::generate_handler![
             app::app_version,
             notifications::notifications_send,
@@ -36,6 +38,7 @@ pub fn run() {
             launcher::launcher_launch,
             launcher::launcher_icon,
             launcher::launcher_read_image,
+            processes::processes_usage,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
