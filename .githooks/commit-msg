@@ -1,0 +1,48 @@
+#!/bin/sh
+# Vérifie que le message de commit respecte Conventional Commits.
+# Utilisé par le hook Git local ET par la CI (.github/workflows/conventions.yml).
+# Usage : .githooks/commit-msg <fichier-contenant-le-message>
+
+msg_file="$1"
+if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
+  echo "usage: $0 <fichier-message>" >&2
+  exit 2
+fi
+
+# Première ligne non vide et non commentée = en-tête
+header=$(grep -v '^#' "$msg_file" | sed '/^[[:space:]]*$/d' | head -n 1)
+
+# Messages générés automatiquement par Git : tolérés
+case "$header" in
+  "Merge "*|"Revert \""*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+types='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+pattern="^($types)(\([a-z0-9][a-z0-9-]*\))?!?: [^ ].*$"
+
+if ! printf '%s\n' "$header" | grep -Eq "$pattern"; then
+  cat >&2 <<MSG
+✖ Message de commit invalide :
+    $header
+
+Format attendu (Conventional Commits) :
+    <type>(<scope optionnel>)!?: <description>
+
+Types : feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+Exemples :
+    feat(timer): ajouter un minuteur Pomodoro
+    fix(launcher): corriger le chemin des raccourcis Windows
+    feat(tauri)!: passer à l'API de plugins v2
+
+Voir CONTRIBUTING.md
+MSG
+  exit 1
+fi
+
+len=$(printf '%s' "$header" | wc -m | tr -d ' ')
+if [ "$len" -gt 72 ]; then
+  echo "✖ En-tête trop long ($len caractères, max 72) : $header" >&2
+  exit 1
+fi
+
+exit 0
