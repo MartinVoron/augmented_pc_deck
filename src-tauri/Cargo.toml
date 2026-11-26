@@ -16,6 +16,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# Jetons : Gestionnaire d'identification sous Windows (magasin en mémoire ailleurs, pour les tests).
+keyring = "3"
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -23,3 +25,6 @@ thiserror = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-log = "2"
 log = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
