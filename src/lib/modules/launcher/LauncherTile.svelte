@@ -5,14 +5,32 @@
 <script lang="ts">
   import type { TileConfig } from "../../grid/defaultLayout";
   import type { AppError } from "../../tauri";
+  import { Plus } from "@lucide/svelte";
+  import { onMount } from "svelte";
   import { launch, type Shortcut } from ".";
+  import { onFileDrop } from "./files";
   import ShortcutIcon from "./ShortcutIcon.svelte";
+  import ShortcutsDialog from "./ShortcutsDialog.svelte";
+  import { shortcutFromTarget } from "./shortcuts";
+  import { updateShortcuts } from "./state";
 
   let { tile }: { tile: TileConfig } = $props();
 
   let shortcuts = $derived(tile.shortcuts ?? []);
   let error = $state("");
   let errorTimer: ReturnType<typeof setTimeout> | undefined;
+  let showDialog = $state(false);
+  let root: HTMLElement | undefined = $state();
+
+  // Un fichier déposé sur la tuile depuis l'Explorateur devient un raccourci.
+  onMount(() =>
+    onFileDrop((paths, element) => {
+      if (!root || !element || !root.closest(".tile")?.contains(element)) return;
+      void updateShortcuts(tile.id, (list) =>
+        paths.reduce((acc, path) => [...acc, shortcutFromTarget(acc, path)], list),
+      );
+    }),
+  );
 
   async function open(shortcut: Shortcut) {
     clearTimeout(errorTimer);
@@ -27,15 +45,22 @@
   }
 </script>
 
-<div class="launcher">
+<div class="launcher" bind:this={root}>
   {#if shortcuts.length === 0}
-    <p class="empty">Aucun raccourci pour l'instant.</p>
+    <div class="empty">
+      <p>Aucun raccourci pour l'instant. Glissez un fichier ici ou :</p>
+      <button type="button" class="add" onclick={() => (showDialog = true)}>
+        <Plus size={14} /> Ajouter un raccourci
+      </button>
+    </div>
   {:else}
     <ul>
       {#each shortcuts as shortcut (shortcut.id)}
         <li>
           <button type="button" title={shortcut.target} onclick={() => open(shortcut)}>
-            <span class="icon"><ShortcutIcon target={shortcut.target} size={28} /></span>
+            <span class="icon">
+              <ShortcutIcon target={shortcut.target} icon={shortcut.icon} size={28} />
+            </span>
             <span class="name">{shortcut.name}</span>
           </button>
         </li>
@@ -47,6 +72,10 @@
     <p class="error" role="alert">{error}</p>
   {/if}
 </div>
+
+{#if showDialog}
+  <ShortcutsDialog tileId={tile.id} onclose={() => (showDialog = false)} />
+{/if}
 
 <style>
   .launcher {
@@ -101,7 +130,22 @@
   }
 
   .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .empty p {
     margin: 0;
+  }
+
+  button.add {
+    flex-direction: row;
+    width: auto;
+    padding: 0.25rem 0.5rem;
+    border-color: var(--color-border);
+    font-size: 0.8rem;
   }
 
   .error {

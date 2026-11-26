@@ -5,6 +5,7 @@ pub mod notifications;
 pub mod tokens;
 pub mod window;
 
+use modules::processes::{self, ProcessMonitor};
 use modules::{app, launcher, settings};
 use notifications::NotificationSettings;
 use tokens::TokenStore;
@@ -16,10 +17,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(window::state_plugin())
         .plugin(window::autostart_plugin())
         .manage(NotificationSettings::default())
         .manage(TokenStore::system())
+        .manage(ProcessMonitor::default())
         .on_window_event(window::on_window_event)
         .invoke_handler(tauri::generate_handler![
             app::app_version,
@@ -35,6 +38,10 @@ pub fn run() {
             tokens::tokens_delete,
             launcher::launcher_launch,
             launcher::launcher_icon,
+            launcher::launcher_read_image,
+            processes::processes_usage,
+            processes::processes_list,
+            processes::processes_kill,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));

@@ -6,6 +6,9 @@ import type { TileConfig } from "../../grid/defaultLayout";
 import LauncherTile from "./LauncherTile.svelte";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/webview", () => ({
+  getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => {}) }),
+}));
 const mockedInvoke = vi.mocked(invoke);
 
 const tile: TileConfig = {
@@ -60,10 +63,12 @@ describe("LauncherTile", () => {
     );
   });
 
-  it("indique quand la tuile n'a aucun raccourci", () => {
+  it("propose d'ajouter un raccourci quand la tuile est vide", async () => {
     render(LauncherTile, { tile: { ...tile, shortcuts: [] } });
 
-    expect(screen.getByText("Aucun raccourci pour l'instant.")).toBeTruthy();
+    expect(screen.getByText(/Aucun raccourci pour l'instant/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole("button", { name: "Ajouter un raccourci" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
   it("reconnaît les URL sans confondre une lettre de lecteur", () => {

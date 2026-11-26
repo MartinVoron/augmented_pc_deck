@@ -32,6 +32,10 @@ open = "5"
 # Lanceur : icônes converties en PNG pour l'interface.
 png = "0.18"
 base64 = "0.22"
+# Lanceur : sélecteur de fichier pour choisir la cible d'un raccourci.
+tauri-plugin-dialog = "2"
+# Processus : usage du processeur, de la mémoire et des disques.
+sysinfo = { version = "0.36.1", default-features = false, features = ["system", "disk"] }
 
 [dev-dependencies]
 tempfile = "3"

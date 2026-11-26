@@ -153,6 +153,43 @@ pub async fn launcher_icon(target: String) -> AppResult<Option<String>> {
         .map_err(|e| AppError::Other(format!("extraction de l'icône interrompue : {e}")))?
 }
 
+/// Taille maximale d'une icône personnalisée : elle est gardée dans `config.json`.
+pub const MAX_IMAGE_BYTES: u64 = 512 * 1024;
+
+/// Type MIME d'une image, d'après son extension.
+fn image_mime(path: &Path) -> Option<&'static str> {
+    let extension = path.extension()?.to_str()?.to_ascii_lowercase();
+    Some(match extension.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "ico" => "image/x-icon",
+        "bmp" => "image/bmp",
+        _ => return None,
+    })
+}
+
+/// Lit une image choisie comme icône personnalisée et la renvoie en `data:` URL.
+/// L'image est copiée dans la configuration : déplacer le fichier ensuite ne casse rien.
+#[tauri::command]
+pub fn launcher_read_image(path: String) -> AppResult<String> {
+    let path = PathBuf::from(path);
+    let mime = image_mime(&path).ok_or_else(|| {
+        AppError::InvalidInput("choisissez une image PNG, JPEG, GIF, WebP, SVG, ICO ou BMP".into())
+    })?;
+    ensure_exists(&path)?;
+    if std::fs::metadata(&path)?.len() > MAX_IMAGE_BYTES {
+        return Err(AppError::InvalidInput(
+            "l'image dépasse 512 Ko, choisissez-en une plus petite".into(),
+        ));
+    }
+    let bytes = std::fs::read(&path)?;
+    let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes);
+    Ok(format!("data:{mime};base64,{encoded}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -209,6 +246,29 @@ mod tests {
         let error = launcher_launch("/dossier/qui/n/existe/pas.exe".into(), None).unwrap_err();
         assert_eq!(error.code(), "not_found");
         assert!(error.to_string().contains("est introuvable"));
+    }
+
+    #[test]
+    fn reads_a_small_image_as_data_url() {
+        let dir = tempfile::tempdir().unwrap();
+        let image = dir.path().join("icone.PNG");
+        std::fs::write(&image, [1, 2, 3]).unwrap();
+        let url = launcher_read_image(image.display().to_string()).unwrap();
+        assert_eq!(url, "data:image/png;base64,AQID");
+    }
+
+    #[test]
+    fn refuses_other_files_and_big_images() {
+        let dir = tempfile::tempdir().unwrap();
+        let text = dir.path().join("notes.txt");
+        std::fs::write(&text, "bonjour").unwrap();
+        let error = launcher_read_image(text.display().to_string()).unwrap_err();
+        assert_eq!(error.code(), "invalid_input");
+
+        let big = dir.path().join("grande.png");
+        std::fs::write(&big, vec![0; MAX_IMAGE_BYTES as usize + 1]).unwrap();
+        let error = launcher_read_image(big.display().to_string()).unwrap_err();
+        assert!(error.to_string().contains("512 Ko"));
     }
 
     #[test]
