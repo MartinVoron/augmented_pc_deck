@@ -39,6 +39,8 @@ pub fn run() {
             launcher::launcher_icon,
             launcher::launcher_read_image,
             processes::processes_usage,
+            processes::processes_list,
+            processes::processes_kill,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
