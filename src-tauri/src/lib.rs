@@ -4,7 +4,7 @@ pub mod modules;
 pub mod notifications;
 pub mod tokens;
 
-use modules::app;
+use modules::{app, settings};
 use notifications::NotificationSettings;
 use tokens::TokenStore;
 
@@ -22,12 +22,15 @@ pub fn run() {
             notifications::notifications_send,
             notifications::notifications_is_enabled,
             notifications::notifications_set_enabled,
+            settings::settings_get,
+            settings::settings_save,
             tokens::tokens_status,
             tokens::tokens_set,
             tokens::tokens_delete,
         ])
-        .setup(|_app| {
+        .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
+            settings::init(app.handle())?;
             Ok(())
         })
         .run(tauri::generate_context!())

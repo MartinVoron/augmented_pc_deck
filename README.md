@@ -59,6 +59,9 @@ src/
   App.svelte              écran principal
   lib/tauri.ts            fonction call() pour appeler le Rust
   lib/notifications.ts    envoi des notifications Windows
+  lib/theme.css           palette du thème sombre (variables CSS)
+  lib/grid/               tailles, icônes et disposition par défaut des tuiles
+  lib/components/         composants communs : grille, tuile, protection des tuiles
   lib/modules/<module>/   composants et appels Tauri d'un module
 src-tauri/
   src/error.rs            erreur commune renvoyée à l'interface
@@ -76,6 +79,16 @@ public/                   fichiers statiques de l'interface
   le `code` est stable pour le code, le `message` est en français, prêt à afficher.
 - Côté interface, on n'utilise jamais `invoke` directement mais `call()` de
   `src/lib/tauri.ts`, qui transforme l'échec en `AppError` (avec `code` et `message`).
+
+## Configuration
+
+Les réglages et la disposition des tuiles sont enregistrés dans
+`%APPDATA%\fr.martinvoron.augmented-pc-deck\config.json`.
+
+- Le fichier porte un numéro `version`. Quand son format change, l'application migre
+  l'ancien fichier au démarrage (voir `src-tauri/src/modules/settings/config.rs`).
+- Si le fichier est abîmé (ou vient d'une version plus récente), il est mis de côté sous
+  le nom `config.json.<horodatage>.bak` et l'application démarre avec les valeurs par défaut.
 
 ## Jetons de connexion
 
