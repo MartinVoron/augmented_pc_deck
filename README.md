@@ -77,6 +77,16 @@ public/                   fichiers statiques de l'interface
 - Côté interface, on n'utilise jamais `invoke` directement mais `call()` de
   `src/lib/tauri.ts`, qui transforme l'échec en `AppError` (avec `code` et `message`).
 
+## Configuration
+
+Les réglages et la disposition des tuiles sont enregistrés dans
+`%APPDATA%\fr.martinvoron.augmented-pc-deck\config.json`.
+
+- Le fichier porte un numéro `version`. Quand son format change, l'application migre
+  l'ancien fichier au démarrage (voir `src-tauri/src/modules/settings/config.rs`).
+- Si le fichier est abîmé (ou vient d'une version plus récente), il est mis de côté sous
+  le nom `config.json.<horodatage>.bak` et l'application démarre avec les valeurs par défaut.
+
 ## Journal des erreurs
 
 Les messages de l'application et les erreurs (Rust et interface) sont écrits dans
