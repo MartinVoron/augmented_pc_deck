@@ -49,6 +49,7 @@
   }
 
   .time {
+    color: var(--color-text);
     font-size: 2rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
