@@ -58,8 +58,8 @@
 {#if status}
   <h3 class="spaced">1. Script du hook</h3>
   <p class="hint">
-    Claude Code lance ce petit script PowerShell quand il attend une réponse ou qu'il a fini. Il
-    contient le jeton qui protège le serveur local.
+    Claude Code lance ce petit script quand il attend une réponse ou qu'il a fini. Il contient le
+    jeton qui protège le serveur local.
   </p>
   <div class="row">
     <button type="button" class="primary" onclick={() => run(installHook, "Script créé.")}>
@@ -73,8 +73,8 @@
 
   <h3 class="spaced">2. Réglages de Claude Code</h3>
   <p class="hint">
-    Ajoutez ce bloc dans <code>%USERPROFILE%\.claude\settings.json</code> (s'il y a déjà une partie «
-    hooks », ajoutez seulement « Notification » et « Stop » dedans), puis redémarrez Claude Code.
+    Ajoutez ce bloc dans <code>{status.settingsFile}</code> (s'il y a déjà une partie « hooks », ajoutez
+    seulement « Notification » et « Stop » dedans), puis redémarrez Claude Code.
   </p>
   <pre>{status.settingsSnippet}</pre>
   <div class="row">

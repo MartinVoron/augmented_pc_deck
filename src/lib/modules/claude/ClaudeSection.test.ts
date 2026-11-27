@@ -16,6 +16,7 @@ beforeEach(() => {
     scriptPath: "C:\\Users\\moi\\AppData\\Roaming\\deck\\claude-hook.ps1",
     scriptInstalled: false,
     settingsSnippet: '{ "hooks": {} }',
+    settingsFile: "%USERPROFILE%\\.claude\\settings.json",
   };
   mockedInvoke.mockReset();
   mockedInvoke.mockImplementation((command) => {

@@ -35,6 +35,7 @@ function fakeBackend(command: string, args?: Record<string, unknown>): Promise<u
         scriptPath: "C:\\deck\\claude-hook.ps1",
         scriptInstalled: false,
         settingsSnippet: "{}",
+        settingsFile: "~/.claude/settings.json",
       });
     default:
       return Promise.reject({ code: "other", message: `commande inconnue : ${command}` });
