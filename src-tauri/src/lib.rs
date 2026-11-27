@@ -1,4 +1,5 @@
 pub mod error;
+pub mod http;
 pub mod logging;
 pub mod modules;
 pub mod notifications;
@@ -8,7 +9,7 @@ pub mod window;
 use modules::music::{self, MusicState};
 use modules::processes::{self, ProcessMonitor};
 use modules::timers::{self, Timers};
-use modules::{app, launcher, settings};
+use modules::{app, github, launcher, settings};
 use notifications::NotificationSettings;
 use tokens::TokenStore;
 
@@ -52,6 +53,9 @@ pub fn run() {
             timers::timers_reset,
             music::music_now_playing,
             music::music_control,
+            github::github_connect,
+            github::github_account,
+            github::github_disconnect,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
