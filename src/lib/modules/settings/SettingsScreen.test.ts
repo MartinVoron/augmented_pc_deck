@@ -13,7 +13,7 @@ function makeConfig(): Config {
     version: 1,
     general: { language: "fr", notificationsEnabled: true },
     window: { alwaysOnTop: false, fullscreen: false },
-    layout: { tiles: [] },
+    layout: { pages: [] },
   };
 }
 

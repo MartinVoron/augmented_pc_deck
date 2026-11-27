@@ -5,12 +5,12 @@
 <script lang="ts">
   import { MapPin, Search, X } from "@lucide/svelte";
   import { DEFAULT_PLACE, searchPlaces, type Place } from ".";
-  import { updateTile } from "../../grid/state";
+  import { findTile, updateTile } from "../../grid/state";
   import { settings } from "../settings/state.svelte";
 
   let { tileId, onclose }: { tileId: string; onclose: () => void } = $props();
 
-  let tile = $derived(settings.config?.layout.tiles.find((t) => t.id === tileId));
+  let tile = $derived(findTile(settings.config, tileId));
   let current = $derived(tile?.location ?? DEFAULT_PLACE);
 
   let query = $state("");

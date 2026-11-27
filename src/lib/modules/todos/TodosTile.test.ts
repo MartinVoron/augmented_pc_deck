@@ -20,7 +20,7 @@ const tile: TileConfig = { id: "todos-1", kind: "todos", title: "Tâches", size:
 let saved: Config | null;
 
 function savedTile() {
-  return saved?.layout.tiles[0];
+  return saved?.layout.pages[0].tiles[0];
 }
 
 describe("TodosTile", () => {
@@ -33,7 +33,7 @@ describe("TodosTile", () => {
           version: 1,
           general: { language: "fr", notificationsEnabled: true },
           window: { alwaysOnTop: false, fullscreen: false },
-          layout: { tiles: [tile] },
+          layout: { pages: [{ id: "page-1", name: "Principal", tiles: [tile] }] },
         });
       }
       if (command === "settings_save") {

@@ -18,6 +18,7 @@
   } from "@lucide/svelte";
   import { onMount } from "svelte";
   import { clearIconCache, readImage, type Shortcut } from ".";
+  import { findTile } from "../../grid/state";
   import { settings } from "../settings/state.svelte";
   import { onFileDrop, pickPath } from "./files";
   import ShortcutIcon from "./ShortcutIcon.svelte";
@@ -32,7 +33,7 @@
 
   let { tileId, onclose }: { tileId: string; onclose: () => void } = $props();
 
-  let tile = $derived(settings.config?.layout.tiles.find((t) => t.id === tileId));
+  let tile = $derived(findTile(settings.config, tileId));
   let shortcuts = $derived(tile?.shortcuts ?? []);
 
   /** Raccourci en cours de modification (nouveau ou existant). */

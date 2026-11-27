@@ -23,7 +23,7 @@ function tileTitles(): string[] {
 
 /** Dernière disposition envoyée au Rust. */
 function savedTiles(): TileConfig[] {
-  return (saved?.layout.tiles ?? []) as TileConfig[];
+  return (saved?.layout.pages[0].tiles ?? []) as TileConfig[];
 }
 
 describe("Dashboard", () => {
@@ -35,7 +35,7 @@ describe("Dashboard", () => {
         return Promise.resolve({
           version: 1,
           general: { language: "fr", notificationsEnabled: true },
-          layout: { tiles: startTiles },
+          layout: { pages: [{ id: "page-1", name: "Principal", tiles: startTiles }] },
         });
       }
       if (command === "settings_save") {

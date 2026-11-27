@@ -1,5 +1,5 @@
 <!--
-  Tableau de bord : la grille de tuiles enregistrée dans la configuration.
+  Tableau de bord : la grille de tuiles d'une page enregistrée dans la configuration.
   En mode édition, on peut ajouter, supprimer, déplacer (glisser-déposer ou flèches)
   et redimensionner les tuiles. Chaque changement est enregistré tout de suite.
 -->
@@ -9,11 +9,12 @@
   import { KIND_ICONS } from "../grid/icons";
   import {
     addTile,
+    allTiles,
     KIND_TITLES,
     moveTile,
     removeTile,
     resizeTile,
-    sanitizeLayout,
+    sanitizePages,
     TILE_SIZES,
   } from "../grid/layout";
   import { updateTile } from "../grid/state";
@@ -25,9 +26,12 @@
   import TileContent from "./TileContent.svelte";
   import TileGrid from "./TileGrid.svelte";
 
-  let { editing = false }: { editing?: boolean } = $props();
+  /** `pageId` : page affichée (la première si absente ou inconnue). */
+  let { editing = false, pageId }: { editing?: boolean; pageId?: string } = $props();
 
-  let tiles = $derived(sanitizeLayout(settings.config?.layout.tiles));
+  let pages = $derived(sanitizePages(settings.config?.layout.pages));
+  let page = $derived(pages.find((p) => p.id === pageId) ?? pages[0]);
+  let tiles = $derived(page.tiles);
   let draggedId = $state<string | null>(null);
   let newKind = $state<TileKind>("timers");
   /** Tuile du lanceur dont on modifie les raccourcis. */
@@ -42,7 +46,11 @@
   };
 
   function save(next: TileConfig[]) {
-    void updateSettings((config) => (config.layout.tiles = next));
+    const id = page.id;
+    void updateSettings((config) => {
+      const target = config.layout.pages.find((p) => p.id === id);
+      if (target) target.tiles = next;
+    });
   }
 
   function drop(targetIndex: number) {
@@ -151,7 +159,7 @@
           {/each}
         </select>
       </label>
-      <button type="button" onclick={() => save(addTile(tiles, newKind))}>
+      <button type="button" onclick={() => save(addTile(tiles, newKind, allTiles(pages)))}>
         <Plus size={14} /> Ajouter
       </button>
     </div>
@@ -166,8 +174,12 @@
   <CityDialog tileId={cityTileId} onclose={() => (cityTileId = null)} />
 {/if}
 
-{#if editing && tiles.length === 0}
-  <p class="empty">La grille est vide : ajoutez une tuile.</p>
+{#if tiles.length === 0}
+  <p class="empty">
+    {editing
+      ? "Cette page est vide : ajoutez une tuile."
+      : "Cette page est vide. Cliquez sur « Modifier la disposition » pour y ajouter des tuiles."}
+  </p>
 {/if}
 
 <style>

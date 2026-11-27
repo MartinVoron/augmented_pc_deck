@@ -7,7 +7,7 @@ use crate::modules::weather::Place;
 
 /// Version actuelle du format du fichier de configuration.
 /// À augmenter à chaque changement de format, en ajoutant une étape dans [`migrate`].
-pub const CURRENT_VERSION: u32 = 1;
+pub const CURRENT_VERSION: u32 = 2;
 
 /// Configuration complète de l'application, enregistrée dans `config.json`.
 ///
@@ -100,10 +100,21 @@ impl Default for GmailSettings {
     }
 }
 
-/// Disposition de la grille de tuiles.
+/// Disposition des tuiles, rangées en pages (onglets).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Layout {
+    pub pages: Vec<Page>,
+}
+
+/// Une page de tuiles. Les identifiants des tuiles sont uniques dans toutes les pages.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Page {
+    pub id: String,
+    /// Nom affiché dans l'onglet.
+    pub name: String,
+    #[serde(default)]
     pub tiles: Vec<TileConfig>,
 }
 
@@ -207,19 +218,23 @@ impl TileConfig {
 }
 
 impl Default for Layout {
-    /// Disposition proposée au premier lancement : une tuile par module.
+    /// Disposition proposée au premier lancement : une page avec une tuile par module.
     fn default() -> Self {
         Self {
-            tiles: vec![
-                TileConfig::new("launcher", "Raccourcis", "2x1"),
-                TileConfig::new("processes", "Processeur et mémoire", "2x1"),
-                TileConfig::new("music", "Musique", "2x2"),
-                TileConfig::new("timers", "Minuteurs", "1x1"),
-                TileConfig::new("todos", "Tâches", "2x2"),
-                TileConfig::new("github", "GitHub", "1x1"),
-                TileConfig::new("gmail", "Gmail", "1x1"),
-                TileConfig::new("claude", "Claude", "1x1"),
-            ],
+            pages: vec![Page {
+                id: "page-1".into(),
+                name: "Principal".into(),
+                tiles: vec![
+                    TileConfig::new("launcher", "Raccourcis", "2x1"),
+                    TileConfig::new("processes", "Processeur et mémoire", "2x1"),
+                    TileConfig::new("music", "Musique", "2x2"),
+                    TileConfig::new("timers", "Minuteurs", "1x1"),
+                    TileConfig::new("todos", "Tâches", "2x2"),
+                    TileConfig::new("github", "GitHub", "1x1"),
+                    TileConfig::new("gmail", "Gmail", "1x1"),
+                    TileConfig::new("claude", "Claude", "1x1"),
+                ],
+            }],
         }
     }
 }
@@ -248,8 +263,9 @@ pub fn parse(text: &str) -> Result<Config, ParseError> {
 
 /// Fait passer un fichier de son ancienne version à [`CURRENT_VERSION`], étape par étape.
 ///
-/// Pour un futur format 2 : ajouter `1 => { /* transformer value */ }` puis passer
-/// [`CURRENT_VERSION`] à 2. Chaque étape ne connaît que la version précédente.
+/// Pour un nouveau format : ajouter une étape `n => …` qui passe de la version `n`
+/// à `n + 1`, puis augmenter [`CURRENT_VERSION`]. Chaque étape ne connaît que la
+/// version précédente.
 fn migrate(value: &mut Value) -> Result<(), ParseError> {
     // Un fichier sans numéro de version est traité comme la version 1.
     let mut version = value
@@ -261,11 +277,26 @@ fn migrate(value: &mut Value) -> Result<(), ParseError> {
         return Err(ParseError::TooRecent(version));
     }
     while version < CURRENT_VERSION {
-        // Aucune migration pour l'instant : la version 1 est la première.
+        if version == 1 {
+            tiles_into_pages(value);
+        }
         version += 1;
     }
     value["version"] = Value::from(CURRENT_VERSION);
     Ok(())
+}
+
+/// Version 1 → 2 : la liste unique de tuiles devient la première page.
+fn tiles_into_pages(value: &mut Value) {
+    let Some(layout) = value.get_mut("layout").and_then(Value::as_object_mut) else {
+        return;
+    };
+    if let Some(tiles) = layout.remove("tiles") {
+        layout.insert(
+            "pages".into(),
+            serde_json::json!([{ "id": "page-1", "name": "Principal", "tiles": tiles }]),
+        );
+    }
 }
 
 #[cfg(test)]
@@ -279,7 +310,7 @@ mod tests {
         assert!(config.general.notifications_enabled);
         assert_eq!(config.general.language, "fr");
         assert!(!config.window.always_on_top && !config.window.fullscreen);
-        assert_eq!(config.layout.tiles.len(), 8);
+        assert_eq!(config.layout.pages[0].tiles.len(), 8);
     }
 
     #[test]
@@ -305,10 +336,10 @@ mod tests {
             "shortcuts": [{ "id": "s1", "name": "Bloc-notes", "target": "C:\\Windows\\notepad.exe" }]
         }, { "id": "timers-1", "kind": "timers", "title": "Minuteurs", "size": "1x1" }] } }"#;
         let config = parse(text).unwrap();
-        let shortcut = &config.layout.tiles[0].shortcuts[0];
+        let shortcut = &config.layout.pages[0].tiles[0].shortcuts[0];
         assert_eq!(shortcut.name, "Bloc-notes");
         assert_eq!(shortcut.args, "");
-        assert!(config.layout.tiles[1].shortcuts.is_empty());
+        assert!(config.layout.pages[0].tiles[1].shortcuts.is_empty());
         // Une tuile sans raccourci n'écrit pas de liste vide dans le fichier.
         let written = serde_json::to_string(&config).unwrap();
         assert_eq!(written.matches("shortcuts").count(), 1);
@@ -321,8 +352,8 @@ mod tests {
             "timers": [{ "id": "minuteur-1", "name": "Thé", "durationSecs": 240 }]
         }] } }"#;
         let config = parse(text).unwrap();
-        assert_eq!(config.layout.tiles[0].timers[0].duration_secs, 240);
-        assert_eq!(config.layout.tiles[0].pomodoro, None);
+        assert_eq!(config.layout.pages[0].tiles[0].timers[0].duration_secs, 240);
+        assert_eq!(config.layout.pages[0].tiles[0].pomodoro, None);
     }
 
     #[test]
@@ -332,7 +363,7 @@ mod tests {
             "todos": [{ "id": "t1", "text": "Appeler le garage", "done": true }, { "id": "t2", "text": "Courses" }]
         }] } }"#;
         let config = parse(text).unwrap();
-        let tile = &config.layout.tiles[0];
+        let tile = &config.layout.pages[0].tiles[0];
         assert!(tile.hide_done);
         assert!(tile.todos[0].done && !tile.todos[1].done);
         let written = serde_json::to_string(&config).unwrap();
@@ -345,7 +376,7 @@ mod tests {
             "id": "clock-1", "kind": "clock", "title": "Horloge", "size": "2x1", "showSeconds": true
         }] } }"#;
         let config = parse(text).unwrap();
-        assert!(config.layout.tiles[0].show_seconds);
+        assert!(config.layout.pages[0].tiles[0].show_seconds);
         let written = serde_json::to_string(&config).unwrap();
         assert_eq!(parse(&written).unwrap(), config);
     }
@@ -358,9 +389,41 @@ mod tests {
         }] } }"#;
         let config = parse(text).unwrap();
         assert_eq!(
-            config.layout.tiles[0].location.as_ref().unwrap().name,
+            config.layout.pages[0].tiles[0]
+                .location
+                .as_ref()
+                .unwrap()
+                .name,
             "Caen"
         );
+        let written = serde_json::to_string(&config).unwrap();
+        assert_eq!(parse(&written).unwrap(), config);
+    }
+
+    #[test]
+    fn version_1_tiles_become_the_first_page() {
+        let text = r#"{ "version": 1, "layout": { "tiles": [
+            { "id": "todos-1", "kind": "todos", "title": "Tâches", "size": "2x2",
+              "todos": [{ "id": "t1", "text": "Courses" }] }
+        ] } }"#;
+        let config = parse(text).unwrap();
+        assert_eq!(config.version, 2);
+        assert_eq!(config.layout.pages.len(), 1);
+        let page = &config.layout.pages[0];
+        assert_eq!(page.name, "Principal");
+        assert_eq!(page.tiles[0].todos[0].text, "Courses");
+    }
+
+    #[test]
+    fn reads_several_pages() {
+        let text = r#"{ "version": 2, "layout": { "pages": [
+            { "id": "page-1", "name": "Travail", "tiles": [
+                { "id": "github-1", "kind": "github", "title": "GitHub", "size": "1x1" }] },
+            { "id": "page-2", "name": "Vide" }
+        ] } }"#;
+        let config = parse(text).unwrap();
+        assert_eq!(config.layout.pages[0].tiles[0].kind, "github");
+        assert!(config.layout.pages[1].tiles.is_empty());
         let written = serde_json::to_string(&config).unwrap();
         assert_eq!(parse(&written).unwrap(), config);
     }

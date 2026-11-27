@@ -17,7 +17,7 @@ const mockedOpen = vi.mocked(open);
 let saved: Config | null;
 
 function savedShortcuts() {
-  return saved?.layout.tiles[0].shortcuts ?? [];
+  return saved?.layout.pages[0].tiles[0].shortcuts ?? [];
 }
 
 describe("ShortcutsDialog", () => {
@@ -33,13 +33,21 @@ describe("ShortcutsDialog", () => {
             general: { language: "fr", notificationsEnabled: true },
             window: { alwaysOnTop: false, fullscreen: false },
             layout: {
-              tiles: [
+              pages: [
                 {
-                  id: "launcher-1",
-                  kind: "launcher",
-                  title: "Raccourcis",
-                  size: "2x1",
-                  shortcuts: [{ id: "raccourci-1", name: "Bloc-notes", target: "C:\\notepad.exe" }],
+                  id: "page-1",
+                  name: "Principal",
+                  tiles: [
+                    {
+                      id: "launcher-1",
+                      kind: "launcher",
+                      title: "Raccourcis",
+                      size: "2x1",
+                      shortcuts: [
+                        { id: "raccourci-1", name: "Bloc-notes", target: "C:\\notepad.exe" },
+                      ],
+                    },
+                  ],
                 },
               ],
             },
