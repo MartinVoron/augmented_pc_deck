@@ -17,6 +17,7 @@
     type SectionKey,
   } from ".";
   import type { TileConfig } from "../../grid/defaultLayout";
+  import { untrack } from "svelte";
   import { poll } from "../../polling";
   import { settings } from "../settings/state.svelte";
 
@@ -60,7 +61,10 @@
   }
 
   // Relance le rafraîchissement régulier si l'intervalle change.
-  $effect(() => poll(refresh, refreshMs));
+  $effect(() => {
+    const ms = refreshMs;
+    return untrack(() => poll(refresh, ms));
+  });
 
   // Met à jour « il y a … » sans refaire de requête.
   $effect(() => {
