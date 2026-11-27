@@ -1,15 +1,22 @@
 <script lang="ts">
   import { Check, LayoutGrid, Settings } from "@lucide/svelte";
   import Dashboard from "./lib/components/Dashboard.svelte";
+  import PageTabs from "./lib/components/PageTabs.svelte";
+  import { sanitizePages } from "./lib/grid/layout";
   import TitleBar from "./lib/components/TitleBar.svelte";
   import { getAppVersion } from "./lib/modules/app";
   import SettingsScreen from "./lib/modules/settings/SettingsScreen.svelte";
-  import { loadSettings } from "./lib/modules/settings/state.svelte";
+  import { loadSettings, settings } from "./lib/modules/settings/state.svelte";
 
   let version = $state("");
   let error = $state("");
   let showSettings = $state(false);
   let editing = $state(false);
+  /** Page affichée (la première tant qu'aucune n'est choisie). */
+  let pageId = $state("");
+
+  let pages = $derived(sanitizePages(settings.config?.layout.pages));
+  let currentPageId = $derived(pages.some((p) => p.id === pageId) ? pageId : pages[0].id);
 
   // Vérifie que l'interface et le Rust communiquent bien.
   getAppVersion()
@@ -26,7 +33,10 @@
       <SettingsScreen onclose={() => (showSettings = false)} />
     {:else}
       <main>
-        <Dashboard {editing} />
+        {#if editing || pages.length > 1}
+          <PageTabs currentId={currentPageId} {editing} onselect={(id) => (pageId = id)} />
+        {/if}
+        <Dashboard {editing} pageId={currentPageId} />
 
         <footer>
           <span>
