@@ -1,6 +1,7 @@
 import {
   Bot,
   Clock,
+  CloudSun,
   Cpu,
   GitPullRequest,
   ListTodo,
@@ -22,4 +23,5 @@ export const KIND_ICONS = {
   gmail: Mail,
   claude: Bot,
   clock: Clock,
+  weather: CloudSun,
 } satisfies Record<TileKind, unknown>;

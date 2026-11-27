@@ -11,7 +11,7 @@ use modules::gmail::{self, GmailState};
 use modules::music::{self, MusicState};
 use modules::processes::{self, ProcessMonitor};
 use modules::timers::{self, Timers};
-use modules::{app, github, launcher, settings};
+use modules::{app, github, launcher, settings, weather};
 use notifications::NotificationSettings;
 use tokens::TokenStore;
 
@@ -70,6 +70,8 @@ pub fn run() {
             claude::claude_regenerate_token,
             claude::claude_events,
             claude::claude_clear,
+            weather::weather_forecast,
+            weather::weather_search,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));

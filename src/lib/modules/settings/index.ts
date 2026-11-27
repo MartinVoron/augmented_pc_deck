@@ -4,6 +4,7 @@ import type { Shortcut } from "../launcher";
 import type { TimerSettings } from "../timers";
 import type { PomodoroSettings } from "../timers/pomodoro";
 import type { Todo } from "../todos";
+import type { Place } from "../weather";
 
 /** Une tuile de la grille, telle qu'enregistrée dans la configuration. */
 export interface TileSettings {
@@ -23,6 +24,8 @@ export interface TileSettings {
   hideDone?: boolean;
   /** Affiche les secondes d'une tuile Horloge. */
   showSeconds?: boolean;
+  /** Ville d'une tuile Météo (Caen si absente). */
+  location?: Place;
 }
 
 /** Configuration complète de l'application (fichier `config.json`). */

@@ -42,7 +42,7 @@ sysinfo = { version = "0.36.1", default-features = false, features = ["system", 
 # et lecture des nouveaux messages en parallèle (`JoinSet`).
 tokio = { version = "1", features = ["time", "macros", "net", "io-util", "sync", "rt"] }
 # GitHub, Gmail : appels HTTPS (TLS de Windows, sans dépendance de compilation en plus).
-reqwest = { version = "0.13", default-features = false, features = ["json", "form", "native-tls", "http2", "charset"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "form", "query", "native-tls", "http2", "charset"] }
 # Gmail : connexion OAuth 2.0 avec PKCE (aléa, empreinte SHA-256, adresses).
 getrandom = "0.3"
 sha2 = "0.10"

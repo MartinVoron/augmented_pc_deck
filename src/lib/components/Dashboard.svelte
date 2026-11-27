@@ -4,7 +4,7 @@
   et redimensionner les tuiles. Chaque changement est enregistré tout de suite.
 -->
 <script lang="ts">
-  import { ArrowLeft, ArrowRight, Pencil, Plus, Trash2 } from "@lucide/svelte";
+  import { ArrowLeft, ArrowRight, MapPin, Pencil, Plus, Trash2 } from "@lucide/svelte";
   import { KIND_ACCENTS, type TileConfig, type TileKind } from "../grid/defaultLayout";
   import { KIND_ICONS } from "../grid/icons";
   import {
@@ -19,6 +19,7 @@
   import { updateTile } from "../grid/state";
   import type { TileSize } from "../grid/types";
   import { settings, updateSettings } from "../modules/settings/state.svelte";
+  import CityDialog from "../modules/weather/CityDialog.svelte";
   import ShortcutsDialog from "../modules/launcher/ShortcutsDialog.svelte";
   import Tile from "./Tile.svelte";
   import TileContent from "./TileContent.svelte";
@@ -31,6 +32,8 @@
   let newKind = $state<TileKind>("timers");
   /** Tuile du lanceur dont on modifie les raccourcis. */
   let shortcutsTileId = $state<string | null>(null);
+  /** Tuile Météo dont on choisit la ville. */
+  let cityTileId = $state<string | null>(null);
 
   const SIZE_LABELS: Record<TileSize, string> = {
     "1x1": "Petite (1×1)",
@@ -121,6 +124,11 @@
             Afficher les secondes
           </label>
         {/if}
+        {#if tile.kind === "weather"}
+          <button type="button" class="shortcuts" onclick={() => (cityTileId = tile.id)}>
+            <MapPin size={14} /> Ville…
+          </button>
+        {/if}
         {#if tile.kind === "launcher"}
           <button type="button" class="shortcuts" onclick={() => (shortcutsTileId = tile.id)}>
             <Pencil size={14} /> Raccourcis…
@@ -152,6 +160,10 @@
 
 {#if shortcutsTileId}
   <ShortcutsDialog tileId={shortcutsTileId} onclose={() => (shortcutsTileId = null)} />
+{/if}
+
+{#if cityTileId}
+  <CityDialog tileId={cityTileId} onclose={() => (cityTileId = null)} />
 {/if}
 
 {#if editing && tiles.length === 0}

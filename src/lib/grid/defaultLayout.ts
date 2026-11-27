@@ -2,11 +2,21 @@ import type { Shortcut } from "../modules/launcher";
 import type { TimerSettings } from "../modules/timers";
 import type { PomodoroSettings } from "../modules/timers/pomodoro";
 import type { Todo } from "../modules/todos";
+import type { Place } from "../modules/weather";
 import type { TileAccent, TileSize } from "./types";
 
 /** Module affiché par une tuile. */
 export type TileKind =
-  "launcher" | "processes" | "timers" | "todos" | "music" | "github" | "gmail" | "claude" | "clock";
+  | "launcher"
+  | "processes"
+  | "timers"
+  | "todos"
+  | "music"
+  | "github"
+  | "gmail"
+  | "claude"
+  | "clock"
+  | "weather";
 
 export interface TileConfig {
   id: string;
@@ -25,6 +35,8 @@ export interface TileConfig {
   hideDone?: boolean;
   /** Affiche les secondes d'une tuile Horloge. */
   showSeconds?: boolean;
+  /** Ville d'une tuile Météo (Caen si absente). */
+  location?: Place;
 }
 
 /** Couleur d'accent de chaque module. */
@@ -38,6 +50,7 @@ export const KIND_ACCENTS: Record<TileKind, TileAccent> = {
   gmail: "danger",
   claude: "warning",
   clock: "accent",
+  weather: "accent",
 };
 
 /** Disposition proposée au premier lancement. */
