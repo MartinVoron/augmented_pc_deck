@@ -35,9 +35,20 @@ export function listRuns(): Promise<TimerRuns> {
   return call<TimerRuns>("timers_list");
 }
 
+/** Notification de fin personnalisée (sinon « Minuteur terminé »). */
+export interface TimerAlert {
+  title: string;
+  body: string;
+}
+
 /** Démarre un minuteur, ou le reprend s'il est en pause. */
-export function startTimer(key: string, name: string, durationMs: number): Promise<TimerRun> {
-  return call<TimerRun>("timers_start", { key, name, durationMs });
+export function startTimer(
+  key: string,
+  name: string,
+  durationMs: number,
+  alert?: TimerAlert,
+): Promise<TimerRun> {
+  return call<TimerRun>("timers_start", { key, name, durationMs, alert: alert ?? null });
 }
 
 export function pauseTimer(key: string): Promise<void> {

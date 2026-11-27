@@ -2,6 +2,7 @@
 import { call } from "../../tauri";
 import type { Shortcut } from "../launcher";
 import type { TimerSettings } from "../timers";
+import type { PomodoroSettings } from "../timers/pomodoro";
 
 /** Une tuile de la grille, telle qu'enregistrée dans la configuration. */
 export interface TileSettings {
@@ -13,6 +14,8 @@ export interface TileSettings {
   shortcuts?: Shortcut[];
   /** Comptes à rebours d'une tuile des minuteurs. */
   timers?: TimerSettings[];
+  /** Durées du mode Pomodoro d'une tuile des minuteurs. */
+  pomodoro?: PomodoroSettings;
 }
 
 /** Configuration complète de l'application (fichier `config.json`). */

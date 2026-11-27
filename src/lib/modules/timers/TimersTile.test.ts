@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { formatDuration, remainingMs, type TimerRuns } from ".";
 import type { TileConfig } from "../../grid/defaultLayout";
 import TimersTile from "./TimersTile.svelte";
 
@@ -10,85 +9,47 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}
 const mockedInvoke = vi.mocked(invoke);
 
 const tile: TileConfig = {
-  id: "timers-1",
+  id: "timers-9",
   kind: "timers",
   title: "Minuteurs",
-  size: "1x1",
-  timers: [
-    { id: "minuteur-1", name: "Thé", durationSecs: 240 },
-    { id: "minuteur-2", name: "Pâtes", durationSecs: 600 },
-    { id: "minuteur-3", name: "Lessive", durationSecs: 3600 },
-  ],
+  size: "2x2",
+  pomodoro: { workMins: 50, shortBreakMins: 10, longBreakMins: 20, sessionsBeforeLongBreak: 3 },
 };
-
-let runs: TimerRuns;
 
 describe("TimersTile", () => {
   beforeEach(() => {
-    runs = {
-      "timers-1:minuteur-2": {
-        name: "Pâtes",
-        status: "running",
-        durationMs: 600_000,
-        remainingMs: 600_000,
-        endsAt: Date.now() + 65_000,
-      },
-      "timers-1:minuteur-3": {
-        name: "Lessive",
-        status: "finished",
-        durationMs: 3_600_000,
-        remainingMs: 0,
-        endsAt: null,
-      },
-    };
     mockedInvoke.mockReset();
-    mockedInvoke.mockImplementation((command) => {
-      if (command === "timers_list") return Promise.resolve(runs);
-      return Promise.resolve(null);
-    });
-  });
-
-  it("affiche le temps restant de chaque minuteur", async () => {
-    render(TimersTile, { tile });
-
-    expect(screen.getByRole("timer", { name: "Temps restant de Thé" }).textContent).toBe("4:00");
-    expect(
-      (await screen.findByRole("timer", { name: "Temps restant de Pâtes" })).textContent,
-    ).toMatch(/^1:0[45]$/);
-    expect(screen.getByRole("timer", { name: "Temps restant de Lessive" }).textContent).toBe(
-      "Terminé",
+    mockedInvoke.mockImplementation((command) =>
+      Promise.resolve(command === "timers_list" ? {} : null),
     );
   });
 
-  it("démarre, met en pause et remet à zéro", async () => {
+  it("passe d'un onglet à l'autre", async () => {
     render(TimersTile, { tile });
-    await screen.findByRole("button", { name: "Mettre en pause Pâtes" });
+    expect(screen.getByRole("tab", { name: "Minuteurs" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
 
-    await fireEvent.click(screen.getByRole("button", { name: "Démarrer Thé" }));
-    expect(mockedInvoke).toHaveBeenCalledWith("timers_start", {
-      key: "timers-1:minuteur-1",
-      name: "Thé",
-      durationMs: 240_000,
-    });
-
-    await fireEvent.click(screen.getByRole("button", { name: "Mettre en pause Pâtes" }));
-    expect(mockedInvoke).toHaveBeenCalledWith("timers_pause", { key: "timers-1:minuteur-2" });
-
-    await fireEvent.click(screen.getByRole("button", { name: "Remettre à zéro Lessive" }));
-    expect(mockedInvoke).toHaveBeenCalledWith("timers_reset", { key: "timers-1:minuteur-3" });
+    await fireEvent.click(screen.getByRole("tab", { name: "Chrono" }));
+    expect(screen.getByRole("tabpanel", { name: "Chrono" }).hidden).toBe(false);
+    expect(screen.getByRole("timer", { name: "Temps du chronomètre" }).textContent?.trim()).toBe(
+      "0:00,0",
+    );
   });
 
-  it("formate les durées et calcule le temps restant", () => {
-    expect(formatDuration(0)).toBe("0:00");
-    expect(formatDuration(4_001)).toBe("0:05");
-    expect(formatDuration(3_723_000)).toBe("1:02:03");
-    expect(remainingMs(undefined, 5_000, 0)).toBe(5_000);
+  it("démarre une séance de travail Pomodoro avec les durées de la tuile", async () => {
+    render(TimersTile, { tile });
+    await fireEvent.click(screen.getByRole("tab", { name: "Pomodoro" }));
+
     expect(
-      remainingMs(
-        { name: "", status: "paused", durationMs: 9, remainingMs: 3, endsAt: null },
-        9,
-        100,
-      ),
-    ).toBe(3);
+      screen.getByRole("timer", { name: "Temps restant du Pomodoro" }).textContent?.trim(),
+    ).toBe("50:00");
+    await fireEvent.click(screen.getByRole("button", { name: "Démarrer" }));
+    expect(mockedInvoke).toHaveBeenCalledWith("timers_start", {
+      key: "timers-9:pomodoro",
+      name: "Travail",
+      durationMs: 50 * 60_000,
+      alert: { title: "Séance de travail terminée", body: "Place à la pause (10 min)." },
+    });
   });
 });
