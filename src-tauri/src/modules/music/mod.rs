@@ -1,8 +1,10 @@
 //! Musique : morceau en cours et contrôle de la lecture.
 //!
-//! Les informations viennent des sessions média de Windows (`GlobalSystemMediaTransport
+//! Sous Windows, les informations viennent des sessions média (`GlobalSystemMediaTransport
 //! ControlsSessionManager`) : la même source que le panneau média de Windows, donc ça
 //! marche avec Spotify, les navigateurs, le Lecteur multimédia, VLC…
+//! Sous Linux, elles viennent des lecteurs MPRIS (D-Bus), la même source que le
+//! panneau média de GNOME ou de KDE.
 //! L'interface interroge [`music_now_playing`] toutes les secondes.
 
 mod platform;
@@ -52,11 +54,11 @@ type CachedThumbnail = Option<(String, Option<String>)>;
 /// Pochette du dernier morceau lu, pour ne pas la relire à chaque seconde.
 #[derive(Default, Clone)]
 pub struct MusicState {
-    #[cfg_attr(not(windows), allow(dead_code))]
+    #[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
     thumbnail: Arc<Mutex<CachedThumbnail>>,
 }
 
-#[cfg_attr(not(windows), allow(dead_code))]
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
 impl MusicState {
     /// Renvoie la pochette gardée pour `key`, ou la lit avec `read` et la garde.
     fn thumbnail(&self, key: &str, read: impl FnOnce() -> Option<String>) -> Option<String> {
@@ -113,6 +115,22 @@ pub fn timespan_to_ms(duration: i64) -> u64 {
     u64::try_from(duration / 10_000).unwrap_or(0)
 }
 
+/// Type d'une image d'après ses premiers octets (les lecteurs MPRIS ne le donnent pas).
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn image_mime(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(b"\x89PNG") {
+        Some("image/png")
+    } else if bytes.starts_with(b"\xFF\xD8\xFF") {
+        Some("image/jpeg")
+    } else if bytes.starts_with(b"GIF8") {
+        Some("image/gif")
+    } else if bytes.len() >= 12 && bytes.starts_with(b"RIFF") && &bytes[8..12] == b"WEBP" {
+        Some("image/webp")
+    } else {
+        None
+    }
+}
+
 /// Commande de lecture envoyée à l'application qui joue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -125,7 +143,7 @@ pub enum MusicAction {
 /// Renvoie le morceau en cours, ou `None` quand rien ne joue.
 #[tauri::command]
 pub async fn music_now_playing(state: State<'_, MusicState>) -> AppResult<Option<NowPlaying>> {
-    // Les appels à Windows attendent leur réponse : on les fait hors du fil principal.
+    // Les appels au système attendent leur réponse : on les fait hors du fil principal.
     let state = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || platform::now_playing(&state))
         .await
@@ -166,6 +184,15 @@ mod tests {
         assert_eq!(windows_time_to_unix_ms(0), None);
         assert_eq!(timespan_to_ms(2_150_000_000), 215_000);
         assert_eq!(timespan_to_ms(-5), 0);
+    }
+
+    #[test]
+    fn recognises_cover_images() {
+        assert_eq!(image_mime(b"\x89PNG\r\n\x1a\n"), Some("image/png"));
+        assert_eq!(image_mime(b"\xFF\xD8\xFF\xE0"), Some("image/jpeg"));
+        assert_eq!(image_mime(b"RIFF\0\0\0\0WEBPVP8 "), Some("image/webp"));
+        assert_eq!(image_mime(b"<svg"), None);
+        assert_eq!(image_mime(b""), None);
     }
 
     #[test]
