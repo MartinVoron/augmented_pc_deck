@@ -8,6 +8,7 @@
   import { KIND_ICONS } from "../../grid/icons";
   import type { TileKind } from "../../grid/defaultLayout";
   import type { TokenKind } from "../../tokens";
+  import GithubSection from "../github/GithubSection.svelte";
   import GeneralSection from "./GeneralSection.svelte";
   import TokenSection from "./TokenSection.svelte";
   import { settings } from "./state.svelte";
@@ -30,7 +31,6 @@
 
   /** Modules qui demandent un jeton de connexion. */
   const tokenSections: Partial<Record<SectionId, TokenKind>> = {
-    github: "github",
     gmail: "gmail",
     claude: "claude",
   };
@@ -70,6 +70,8 @@
 
       {#if current === "general"}
         <GeneralSection />
+      {:else if current === "github"}
+        <GithubSection />
       {:else}
         {@const token = tokenSections[current]}
         {#if token}
