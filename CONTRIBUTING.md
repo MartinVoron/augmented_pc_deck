@@ -143,8 +143,9 @@ mineure. Le passage en 1.0.0 se décide à la main (voir plus bas).
    dans `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json` et les fichiers
    de verrouillage, et ajoute les notes de version dans `CHANGELOG.md`.
 2. On fusionne cette PR quand on veut sortir la version (Squash and merge).
-3. Le workflow crée alors l'étiquette `vX.Y.Z`, compile l'application sous Windows et
-   publie les installateurs (`.exe` NSIS et `.msi`) dans une Release GitHub.
+3. Le workflow crée alors l'étiquette `vX.Y.Z`, compile l'application sous Windows puis
+   sous Linux, et publie les installateurs (`.exe` NSIS et `.msi`, `.deb` et `.AppImage`)
+   dans une Release GitHub.
 
 La première version publiée est celle déjà écrite dans les fichiers (0.1.0).
 
