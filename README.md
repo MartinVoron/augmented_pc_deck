@@ -104,14 +104,14 @@ Chaque fonctionnalité a sa place, côté Rust et côté interface, avec le mêm
 src/
   App.svelte              écran principal
   lib/tauri.ts            fonction call() pour appeler le Rust
-  lib/notifications.ts    envoi des notifications Windows
+  lib/notifications.ts    envoi des notifications du système
   lib/theme.css           palette du thème sombre (variables CSS)
   lib/grid/               tailles, icônes et disposition par défaut des tuiles
   lib/components/         composants communs : grille, tuile, protection des tuiles
   lib/modules/<module>/   composants et appels Tauri d'un module
 src-tauri/
   src/error.rs            erreur commune renvoyée à l'interface
-  src/notifications.rs    service commun des notifications Windows
+  src/notifications.rs    service commun des notifications
   src/modules/<module>.rs commandes Tauri d'un module
   tauri.conf.json         configuration de la fenêtre et de l'installateur
 public/                   fichiers statiques de l'interface
@@ -141,14 +141,14 @@ Les réglages et la disposition des tuiles sont enregistrés dans
 - La taille, la position et l'écran de la fenêtre sont retenus d'un lancement à l'autre
   (pratique pour la laisser sur un second écran).
 - Paramètres > Général > Fenêtre : « Toujours au premier plan » et « Plein écran ».
-- Paramètres > Général > Démarrage : « Lancer au démarrage de Windows ».
+- Paramètres > Général > Démarrage : « Lancer à l'ouverture de la session ».
 - La barre de titre de Windows est remplacée par une barre sombre avec trois ronds :
   rouge pour fermer, jaune pour réduire, vert pour agrandir. On déplace la fenêtre en
   la tenant par cette barre, et un double-clic l'agrandit.
 - Fermer (rond rouge ou Alt+F4) ne quitte pas l'application : la fenêtre se cache dans
   la zone de notification.
 - L'icône dans la zone de notification propose Afficher, Masquer et Quitter ;
-  un clic sur l'icône affiche la fenêtre. Pour arrêter vraiment l'application, utiliser
+  un clic sur l'icône affiche la fenêtre (sous Linux, un clic ouvre le menu). Pour arrêter vraiment l'application, utiliser
   Quitter.
 
 ## Jetons de connexion
