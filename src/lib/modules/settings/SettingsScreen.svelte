@@ -9,6 +9,7 @@
   import type { TileKind } from "../../grid/defaultLayout";
   import type { TokenKind } from "../../tokens";
   import GithubSection from "../github/GithubSection.svelte";
+  import GmailSection from "../gmail/GmailSection.svelte";
   import GeneralSection from "./GeneralSection.svelte";
   import TokenSection from "./TokenSection.svelte";
   import { settings } from "./state.svelte";
@@ -31,7 +32,6 @@
 
   /** Modules qui demandent un jeton de connexion. */
   const tokenSections: Partial<Record<SectionId, TokenKind>> = {
-    gmail: "gmail",
     claude: "claude",
   };
 
@@ -72,6 +72,8 @@
         <GeneralSection />
       {:else if current === "github"}
         <GithubSection />
+      {:else if current === "gmail"}
+        <GmailSection />
       {:else}
         {@const token = tokenSections[current]}
         {#if token}
