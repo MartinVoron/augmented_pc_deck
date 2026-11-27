@@ -14,7 +14,8 @@ Claude Code sait lancer une commande à certains moments : ce sont les
 | `Notification` | Claude attend une réponse ou une permission | « attend une réponse » |
 | `Stop`         | Claude a fini de répondre                   | « terminé »            |
 
-À chaque fois, Claude Code lance un petit script PowerShell, créé par l'application.
+À chaque fois, Claude Code lance un petit script créé par l'application (PowerShell
+sous Windows, `sh` avec `curl` sous Linux).
 Le script envoie l'événement à un serveur local de l'application :
 
 - il n'écoute que sur `127.0.0.1:47821`, donc aucun autre ordinateur ne peut l'atteindre ;
@@ -30,10 +31,12 @@ silence au bout de 3 secondes au plus.
 1. Dans Augmented PC Deck : **Paramètres > Claude**.
 2. Vérifiez que le serveur local est « À l'écoute ».
 3. Cliquez sur **Créer le script**. Il est écrit dans le dossier de l'application
-   (`%APPDATA%\fr.martinvoron.augmented-pc-deck\claude-hook.ps1`, chemin affiché dans
-   les paramètres).
+   (`%APPDATA%\fr.martinvoron.augmented-pc-deck\claude-hook.ps1` sous Windows,
+   `~/.local/share/fr.martinvoron.augmented-pc-deck/claude-hook.sh` sous Linux ; le chemin
+   est affiché dans les paramètres).
 4. Cliquez sur **Copier le bloc**, puis ouvrez le fichier des réglages de Claude Code :
-   `%USERPROFILE%\.claude\settings.json` (créez-le s'il n'existe pas).
+   `%USERPROFILE%\.claude\settings.json` sous Windows, `~/.claude/settings.json` sous
+   Linux (créez-le s'il n'existe pas).
 5. Collez le bloc :
    - si le fichier est vide ou n'existe pas, collez le bloc tel quel ;
    - s'il contient déjà des réglages, ajoutez la partie `"hooks"` au même niveau que
@@ -42,7 +45,7 @@ silence au bout de 3 secondes au plus.
      `"Stop"` dedans.
 6. Redémarrez Claude Code. Dans Claude Code, la commande `/hooks` liste les hooks actifs.
 
-Le bloc ressemble à ceci (le chemin du script est le vôtre) :
+Le bloc ressemble à ceci sous Windows (le chemin du script est le vôtre) :
 
 ```json
 {
@@ -71,6 +74,11 @@ Le bloc ressemble à ceci (le chemin du script est le vôtre) :
 }
 ```
 
+Sous Linux, la commande est plus simple, par exemple
+`"command": "sh '/home/moi/.local/share/fr.martinvoron.augmented-pc-deck/claude-hook.sh'"`.
+Il faut `curl` (déjà présent sur la plupart des distributions, sinon
+`sudo apt install curl`).
+
 ## Vérifier
 
 Demandez quelque chose à Claude Code. Quand il a fini, un événement « terminé »
@@ -82,6 +90,13 @@ dans les paramètres) :
 ```powershell
 '{"hook_event_name":"Notification","cwd":"C:\\dev\\essai","message":"Test"}' |
   powershell -NoProfile -ExecutionPolicy Bypass -File "$env:APPDATA\fr.martinvoron.augmented-pc-deck\claude-hook.ps1"
+```
+
+Sous Linux, dans un terminal :
+
+```sh
+echo '{"hook_event_name":"Notification","cwd":"/home/moi/essai","message":"Test"}' |
+  sh ~/.local/share/fr.martinvoron.augmented-pc-deck/claude-hook.sh
 ```
 
 ## Sécurité

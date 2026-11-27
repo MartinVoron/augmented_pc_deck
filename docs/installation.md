@@ -276,8 +276,8 @@ est ici : **[Recevoir les notifications de Claude Code](claude-hook.md)**. En r�
 
 ![Paramètres Claude : serveur local, script et bloc à copier](images/claude-parametres.png)
 
-Sous Linux, ce module n'est pas encore disponible : le script créé est pour Windows
-([#81](https://github.com/MartinVoron/augmented_pc_deck/issues/81)).
+Sous Linux, c'est pareil : le script est un script `sh` qui utilise `curl`, et le
+fichier des réglages est `~/.claude/settings.json`.
 
 ## 13. Mettre à jour, désinstaller
 
