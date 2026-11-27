@@ -39,6 +39,11 @@ export interface Config {
   layout: {
     tiles: TileSettings[];
   };
+  /** Réglages du module GitHub (absents d'une ancienne configuration). */
+  github?: {
+    /** Intervalle de rafraîchissement de l'activité, en minutes. */
+    refreshMinutes: number;
+  };
 }
 
 /** Lit la configuration actuelle. */
