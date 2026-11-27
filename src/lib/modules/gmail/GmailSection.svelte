@@ -108,7 +108,7 @@
   <form onsubmit={connect}>
     <p class="hint">
       Gmail demande votre propre identifiant OAuth, à créer une seule fois dans la console Google
-      Cloud (type « Application de bureau »). L'application ne pourra que lire vos e-mails : ni
+      Cloud (type « Application de bureau »). L'application ne pourra que lire vos e-mails&nbsp;: ni
       envoyer, ni supprimer.
     </p>
     <div class="links">
