@@ -6,6 +6,7 @@
   import LauncherTile from "../modules/launcher/LauncherTile.svelte";
   import ProcessesTile from "../modules/processes/ProcessesTile.svelte";
   import TimersTile from "../modules/timers/TimersTile.svelte";
+  import TodosTile from "../modules/todos/TodosTile.svelte";
 
   let { tile }: { tile: TileConfig } = $props();
 </script>
@@ -16,6 +17,8 @@
   <ProcessesTile />
 {:else if tile.kind === "timers"}
   <TimersTile {tile} />
+{:else if tile.kind === "todos"}
+  <TodosTile {tile} />
 {:else}
   <p class="soon">Bientôt disponible</p>
 {/if}
