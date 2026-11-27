@@ -5,7 +5,14 @@
 //! - Tout le reste (fichier, dossier, raccourci `.lnk`, URL) est ouvert par Windows avec
 //!   l'application associée, comme un double-clic dans l'Explorateur.
 //! - L'icône d'un programme ou d'un fichier est extraite par Windows (voir [`icon`]).
+//!
+//! Sous Linux :
+//! - un fichier exécutable (sans extension, `.AppImage`, script…) est lancé comme un programme ;
+//! - un fichier `.desktop` (application du menu) lance la commande qu'il décrit, et donne
+//!   son icône (voir [`desktop`]) ;
+//! - le reste est ouvert avec l'application associée (`xdg-open`).
 
+mod desktop;
 mod icon;
 
 use std::path::{Path, PathBuf};
@@ -22,6 +29,8 @@ pub enum Target {
     Program(PathBuf),
     /// Fichier, dossier ou raccourci, ouvert avec l'application associée.
     Path(PathBuf),
+    /// Application décrite par un fichier `.desktop` (Linux).
+    Desktop(PathBuf),
 }
 
 /// Extensions lancées comme des programmes.
@@ -48,14 +57,14 @@ impl Target {
             }
         }
         let path = PathBuf::from(text);
-        let is_program = path
+        let extension = path
             .extension()
             .and_then(|e| e.to_str())
-            .is_some_and(|e| PROGRAM_EXTENSIONS.contains(&e.to_ascii_lowercase().as_str()));
-        Ok(if is_program {
-            Self::Program(path)
-        } else {
-            Self::Path(path)
+            .map(str::to_ascii_lowercase);
+        Ok(match extension.as_deref() {
+            Some(e) if PROGRAM_EXTENSIONS.contains(&e) => Self::Program(path),
+            Some("desktop") if cfg!(target_os = "linux") => Self::Desktop(path),
+            _ => Self::Path(path),
         })
     }
 }
@@ -100,6 +109,34 @@ fn ensure_exists(path: &Path) -> AppResult<()> {
     }
 }
 
+/// Fichier qu'on peut exécuter (droit `x`), hors dossiers. Toujours faux sous Windows,
+/// où les programmes se reconnaissent à leur extension.
+fn is_executable_file(path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        false
+    }
+}
+
+/// Lance un programme avec ses arguments, depuis `dir` s'il est donné.
+fn spawn(target: &str, program: &Path, args: Vec<String>, dir: Option<&Path>) -> AppResult<()> {
+    let mut command = Command::new(program);
+    command.args(args);
+    if let Some(dir) = dir.filter(|d| !d.as_os_str().is_empty()) {
+        command.current_dir(dir);
+    }
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| launch_error(target, e))
+}
+
 /// Traduit une erreur de lancement en message clair.
 fn launch_error(target: &str, error: std::io::Error) -> AppError {
     match error.kind() {
@@ -118,21 +155,25 @@ pub fn launcher_launch(target: String, args: Option<String>) -> AppResult<()> {
     log::info!("lancement de {parsed:?}");
     match parsed {
         Target::Url(url) => open::that_detached(&url).map_err(|e| launch_error(&url, e)),
-        Target::Path(path) => {
+        Target::Path(path) if !is_executable_file(&path) => {
             ensure_exists(&path)?;
             open::that_detached(&path).map_err(|e| launch_error(&target, e))
         }
-        Target::Program(path) => {
+        Target::Program(path) | Target::Path(path) => {
             ensure_exists(&path)?;
-            let mut command = Command::new(&path);
-            command.args(split_args(args.as_deref().unwrap_or_default()));
-            if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
-                command.current_dir(dir);
-            }
-            command
-                .spawn()
-                .map(|_| ())
-                .map_err(|e| launch_error(&target, e))
+            let args = split_args(args.as_deref().unwrap_or_default());
+            spawn(&target, &path, args, path.parent())
+        }
+        Target::Desktop(path) => {
+            ensure_exists(&path)?;
+            let entry = desktop::parse(&std::fs::read_to_string(&path)?).ok_or_else(|| {
+                AppError::InvalidInput(format!("« {target} » ne dit pas quelle application lancer"))
+            })?;
+            let mut exec = entry.exec.into_iter();
+            let program = PathBuf::from(exec.next().unwrap_or_default());
+            let mut all_args: Vec<String> = exec.collect();
+            all_args.extend(split_args(args.as_deref().unwrap_or_default()));
+            spawn(&target, &program, all_args, None)
         }
     }
 }
@@ -141,16 +182,23 @@ pub fn launcher_launch(target: String, args: Option<String>) -> AppResult<()> {
 /// (`data:image/png;base64,…`), ou `None` si la cible n'a pas d'icône (URL, fichier absent).
 #[tauri::command]
 pub async fn launcher_icon(target: String) -> AppResult<Option<String>> {
-    let path = match Target::parse(&target)? {
+    let (path, is_desktop) = match Target::parse(&target)? {
         Target::Url(_) => return Ok(None),
-        Target::Program(path) | Target::Path(path) => path,
+        Target::Program(path) | Target::Path(path) => (path, false),
+        Target::Desktop(path) => (path, true),
     };
     if !path.exists() {
         return Ok(None);
     }
-    tauri::async_runtime::spawn_blocking(move || icon::extract_data_url(&path))
-        .await
-        .map_err(|e| AppError::Other(format!("extraction de l'icône interrompue : {e}")))?
+    tauri::async_runtime::spawn_blocking(move || {
+        if is_desktop {
+            Ok(desktop::icon_data_url(&path))
+        } else {
+            icon::extract_data_url(&path)
+        }
+    })
+    .await
+    .map_err(|e| AppError::Other(format!("extraction de l'icône interrompue : {e}")))?
 }
 
 /// Taille maximale d'une icône personnalisée : elle est gardée dans `config.json`.
@@ -224,6 +272,33 @@ mod tests {
             Target::parse(r"C:\Bureau\Jeu.lnk").unwrap(),
             Target::Path(_)
         ));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn desktop_files_and_executables_are_programs_on_linux() {
+        assert_eq!(
+            Target::parse("/usr/share/applications/firefox.desktop").unwrap(),
+            Target::Desktop(PathBuf::from("/usr/share/applications/firefox.desktop"))
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("outil");
+        std::fs::write(&script, "#!/bin/sh\n").unwrap();
+        assert!(!is_executable_file(&script));
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(is_executable_file(&script));
+        assert!(!is_executable_file(dir.path()));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_desktop_file_without_command_gives_a_clear_message() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("vide.desktop");
+        std::fs::write(&file, "[Desktop Entry]\nName=Vide\n").unwrap();
+        let error = launcher_launch(file.display().to_string(), None).unwrap_err();
+        assert_eq!(error.code(), "invalid_input");
     }
 
     #[test]
