@@ -130,6 +130,9 @@ pub struct TileConfig {
     /// Masque les tâches terminées d'une tuile de la liste de tâches.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hide_done: bool,
+    /// Affiche les secondes d'une tuile Horloge.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub show_seconds: bool,
 }
 
 /// Une tâche de la liste.
@@ -192,6 +195,7 @@ impl TileConfig {
             pomodoro: None,
             todos: Vec::new(),
             hide_done: false,
+            show_seconds: false,
         }
     }
 }
@@ -325,6 +329,17 @@ mod tests {
         let tile = &config.layout.tiles[0];
         assert!(tile.hide_done);
         assert!(tile.todos[0].done && !tile.todos[1].done);
+        let written = serde_json::to_string(&config).unwrap();
+        assert_eq!(parse(&written).unwrap(), config);
+    }
+
+    #[test]
+    fn clock_tile_keeps_its_seconds_option() {
+        let text = r#"{ "layout": { "tiles": [{
+            "id": "clock-1", "kind": "clock", "title": "Horloge", "size": "2x1", "showSeconds": true
+        }] } }"#;
+        let config = parse(text).unwrap();
+        assert!(config.layout.tiles[0].show_seconds);
         let written = serde_json::to_string(&config).unwrap();
         assert_eq!(parse(&written).unwrap(), config);
     }
