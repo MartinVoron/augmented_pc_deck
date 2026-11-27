@@ -5,12 +5,13 @@
 //! `gmail` du Gestionnaire d'identification. Le jeton d'accès, valable une heure,
 //! reste seulement en mémoire et est renouvelé automatiquement.
 
+mod inbox;
 mod oauth;
 
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, Runtime, State};
 use tokio::sync::Mutex;
 
 use crate::error::{AppError, AppResult};
@@ -54,10 +55,14 @@ pub struct GmailAccount {
     pub email: String,
 }
 
-/// Jeton d'accès en mémoire, avec son heure d'expiration.
+pub use inbox::Inbox;
+
+/// Ce que le module garde en mémoire : le jeton d'accès (avec son heure
+/// d'expiration) et les derniers messages lus.
 #[derive(Default)]
 pub struct GmailState {
     access: Mutex<Option<(Secret, Instant)>>,
+    inbox: Mutex<inbox::InboxCache>,
 }
 
 fn load(store: &TokenStore) -> AppResult<Option<Credentials>> {
@@ -116,8 +121,7 @@ pub(crate) fn api_error(status: reqwest::StatusCode) -> AppError {
     }
 }
 
-/// Jeton d'accès valide, renouvelé si besoin. Utilisé par la tuile des e-mails.
-#[allow(dead_code)] // Utilisé par la tuile (issue #28).
+/// Jeton d'accès valide, renouvelé si besoin.
 pub(crate) async fn access_token(state: &GmailState, store: &TokenStore) -> AppResult<Secret> {
     let mut access = state.access.lock().await;
     if let Some((token, expires)) = access.as_ref() {
@@ -191,6 +195,7 @@ pub async fn gmail_connect(
         Secret::new(tokens.access_token),
         Instant::now() + Duration::from_secs(tokens.expires_in),
     ));
+    state.inbox.lock().await.clear();
     log::info!("compte Gmail connecté");
     Ok(GmailAccount { email })
 }
@@ -212,7 +217,27 @@ pub async fn gmail_disconnect(
         oauth::revoke(&credentials.refresh_token).await;
     }
     *state.access.lock().await = None;
+    state.inbox.lock().await.clear();
     store.delete(TokenKind::Gmail)
+}
+
+/// Nombre de non lus et derniers messages de la boîte de réception.
+/// Avec `notify`, une notification Windows signale chaque message arrivé depuis
+/// l'appel précédent (rien au premier appel).
+#[tauri::command]
+pub async fn gmail_unread<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, GmailState>,
+    store: State<'_, TokenStore>,
+    notify: bool,
+) -> AppResult<Inbox> {
+    let token = access_token(&state, &store).await?;
+    let email = load(&store)?.map(|c| c.email).unwrap_or_default();
+    let (inbox, arrivals) = inbox::fetch(&token, &email, &state.inbox).await?;
+    if notify {
+        inbox::notify_arrivals(&app, &arrivals);
+    }
+    Ok(inbox)
 }
 
 #[cfg(test)]

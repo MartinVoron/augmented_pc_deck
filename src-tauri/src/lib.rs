@@ -62,6 +62,7 @@ pub fn run() {
             gmail::gmail_connect,
             gmail::gmail_account,
             gmail::gmail_disconnect,
+            gmail::gmail_unread,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
