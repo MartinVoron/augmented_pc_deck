@@ -202,9 +202,9 @@ Elle marche avec toute application qui s'affiche dans le contrôle du volume de 
 Spotify, Deezer, YouTube dans Edge ou Chrome, le lecteur multimédia de
 Windows, etc. Un bouton grisé veut dire que l'application ne le propose pas.
 
-Sous Linux, la tuile n'affiche pas encore la musique en cours : la lecture par MPRIS
-(Spotify, Firefox, VLC…) arrive bientôt
-([#80](https://github.com/MartinVoron/augmented_pc_deck/issues/80)).
+Sous Linux, elle marche avec tout lecteur compatible MPRIS, c'est-à-dire ceux qui
+s'affichent dans le panneau média du bureau : Spotify, Firefox, Chrome, VLC, Rhythmbox,
+Elisa… S'il y en a plusieurs, la tuile montre celui qui joue.
 
 ![Tuile Musique avec pochette et boutons de lecture](images/musique-controles.png)
 
