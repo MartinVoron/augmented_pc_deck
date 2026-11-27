@@ -56,6 +56,7 @@ pub fn run() {
             github::github_connect,
             github::github_account,
             github::github_disconnect,
+            github::github_activity,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));

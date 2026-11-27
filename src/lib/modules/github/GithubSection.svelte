@@ -5,10 +5,14 @@
 -->
 <script lang="ts">
   import { ExternalLink, LogOut } from "@lucide/svelte";
+  import { settings, updateSettings } from "../settings/state.svelte";
   import {
+    clampRefreshMinutes,
     connectGithub,
     disconnectGithub,
     getGithubAccount,
+    MAX_REFRESH_MINUTES,
+    MIN_REFRESH_MINUTES,
     missingScopes,
     NEW_TOKEN_URL,
     openInBrowser,
@@ -68,6 +72,15 @@
   $effect(() => {
     void refresh();
   });
+
+  let refreshMinutes = $derived(clampRefreshMinutes(settings.config?.github?.refreshMinutes));
+
+  function setRefreshMinutes(value: number) {
+    const minutes = clampRefreshMinutes(value);
+    void updateSettings(
+      (config) => (config.github = { ...config.github, refreshMinutes: minutes }),
+    );
+  }
 </script>
 
 <h3>Connexion</h3>
@@ -129,6 +142,22 @@
 
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
+<h3 class="spaced">Activité</h3>
+<label class="inline">
+  <span>Actualiser toutes les</span>
+  <input
+    type="number"
+    min={MIN_REFRESH_MINUTES}
+    max={MAX_REFRESH_MINUTES}
+    value={refreshMinutes}
+    onchange={(event) => setRefreshMinutes(event.currentTarget.valueAsNumber)}
+  />
+  <span>minutes</span>
+</label>
+<p class="hint">
+  Chaque actualisation fait quatre requêtes, bien en dessous des limites de l'API GitHub.
+</p>
+
 <style>
   h3 {
     margin: 0 0 0.5rem;
@@ -137,6 +166,22 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-muted);
+  }
+
+  .spaced {
+    margin-top: 1.5rem;
+  }
+
+  label.inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+    color: var(--color-text);
+  }
+
+  label.inline input {
+    width: 4.5rem;
   }
 
   form {

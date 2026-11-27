@@ -18,6 +18,7 @@ pub struct Config {
     pub general: GeneralSettings,
     pub window: WindowSettings,
     pub layout: Layout,
+    pub github: GithubSettings,
 }
 
 impl Default for Config {
@@ -27,6 +28,7 @@ impl Default for Config {
             general: GeneralSettings::default(),
             window: WindowSettings::default(),
             layout: Layout::default(),
+            github: GithubSettings::default(),
         }
     }
 }
@@ -59,6 +61,20 @@ pub struct WindowSettings {
     pub always_on_top: bool,
     /// Fenêtre en plein écran.
     pub fullscreen: bool,
+}
+
+/// Réglages du module GitHub.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct GithubSettings {
+    /// Intervalle de rafraîchissement de l'activité, en minutes.
+    pub refresh_minutes: u32,
+}
+
+impl Default for GithubSettings {
+    fn default() -> Self {
+        Self { refresh_minutes: 5 }
+    }
 }
 
 /// Disposition de la grille de tuiles.
