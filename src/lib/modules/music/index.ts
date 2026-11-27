@@ -46,3 +46,10 @@ export function formatTime(ms: number): string {
     ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}`
     : `${minutes}:${seconds}`;
 }
+
+export type MusicAction = "playPause" | "next" | "previous";
+
+/** Envoie une commande de lecture à l'application qui joue. */
+export function controlMusic(action: MusicAction): Promise<void> {
+  return call<void>("music_control", { action });
+}

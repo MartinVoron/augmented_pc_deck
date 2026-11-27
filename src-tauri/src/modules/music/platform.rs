@@ -1,13 +1,20 @@
 //! Accès aux sessions média de Windows. Hors de Windows, rien ne joue.
 
 #[cfg(windows)]
-pub use windows_impl::now_playing;
+pub use windows_impl::{control, now_playing};
 
 #[cfg(not(windows))]
 pub fn now_playing(
     _state: &super::MusicState,
 ) -> crate::error::AppResult<Option<super::NowPlaying>> {
     Ok(None)
+}
+
+#[cfg(not(windows))]
+pub fn control(_action: super::MusicAction) -> crate::error::AppResult<()> {
+    Err(crate::error::AppError::NotFound(
+        "La musique en cours".into(),
+    ))
 }
 
 #[cfg(windows)]
@@ -24,7 +31,7 @@ mod windows_impl {
     use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_MULTITHREADED};
 
     use super::super::{
-        source_name, timespan_to_ms, windows_time_to_unix_ms, MusicState, NowPlaying,
+        source_name, timespan_to_ms, windows_time_to_unix_ms, MusicAction, MusicState, NowPlaying,
         PlaybackStatus,
     };
     use crate::error::{AppError, AppResult};
@@ -63,6 +70,27 @@ mod windows_impl {
                 return Ok(None);
             };
             read_session(&session, state).map_err(windows_error)
+        })
+    }
+
+    /// Envoie une commande de lecture à la session active.
+    pub fn control(action: MusicAction) -> AppResult<()> {
+        with_winrt(|| {
+            let session = current_session()?
+                .ok_or_else(|| AppError::NotFound("La musique en cours".into()))?;
+            let operation = match action {
+                MusicAction::PlayPause => session.TryTogglePlayPauseAsync(),
+                MusicAction::Next => session.TrySkipNextAsync(),
+                MusicAction::Previous => session.TrySkipPreviousAsync(),
+            };
+            let accepted = operation.and_then(|op| op.join()).map_err(windows_error)?;
+            if accepted {
+                Ok(())
+            } else {
+                Err(AppError::PermissionDenied(
+                    "l'application qui joue refuse cette commande".into(),
+                ))
+            }
         })
     }
 

@@ -51,6 +51,7 @@ pub fn run() {
             timers::timers_pause,
             timers::timers_reset,
             music::music_now_playing,
+            music::music_control,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));

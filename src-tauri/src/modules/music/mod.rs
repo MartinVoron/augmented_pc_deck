@@ -9,7 +9,7 @@ mod platform;
 
 use std::sync::{Arc, Mutex};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::error::{AppError, AppResult};
@@ -113,6 +113,15 @@ pub fn timespan_to_ms(duration: i64) -> u64 {
     u64::try_from(duration / 10_000).unwrap_or(0)
 }
 
+/// Commande de lecture envoyée à l'application qui joue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MusicAction {
+    PlayPause,
+    Next,
+    Previous,
+}
+
 /// Renvoie le morceau en cours, ou `None` quand rien ne joue.
 #[tauri::command]
 pub async fn music_now_playing(state: State<'_, MusicState>) -> AppResult<Option<NowPlaying>> {
@@ -121,6 +130,14 @@ pub async fn music_now_playing(state: State<'_, MusicState>) -> AppResult<Option
     tauri::async_runtime::spawn_blocking(move || platform::now_playing(&state))
         .await
         .map_err(|e| AppError::Other(format!("lecture de la musique interrompue : {e}")))?
+}
+
+/// Envoie une commande (lecture/pause, suivant, précédent) à l'application qui joue.
+#[tauri::command]
+pub async fn music_control(action: MusicAction) -> AppResult<()> {
+    tauri::async_runtime::spawn_blocking(move || platform::control(action))
+        .await
+        .map_err(|e| AppError::Other(format!("commande de lecture interrompue : {e}")))?
 }
 
 #[cfg(test)]
@@ -149,6 +166,13 @@ mod tests {
         assert_eq!(windows_time_to_unix_ms(0), None);
         assert_eq!(timespan_to_ms(2_150_000_000), 215_000);
         assert_eq!(timespan_to_ms(-5), 0);
+    }
+
+    #[test]
+    fn reads_actions_from_the_interface() {
+        let action: MusicAction = serde_json::from_str(r#""playPause""#).unwrap();
+        assert_eq!(action, MusicAction::PlayPause);
+        assert!(serde_json::from_str::<MusicAction>(r#""stop""#).is_err());
     }
 
     #[test]
