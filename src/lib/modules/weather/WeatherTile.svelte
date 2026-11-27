@@ -139,6 +139,7 @@
   }
 
   .temperature {
+    color: var(--color-text);
     font-size: 2rem;
     font-weight: 600;
     line-height: 1;

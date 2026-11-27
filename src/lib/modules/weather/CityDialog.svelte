@@ -52,8 +52,8 @@
     </header>
 
     <p class="hint">
-      Actuellement : <strong>{current.name}</strong>{#if current.detail}
-        ({current.detail}){/if}
+      Actuellement : <strong>{current.name}</strong>
+      {#if current.detail}({current.detail}){/if}
     </p>
 
     <form onsubmit={search}>
