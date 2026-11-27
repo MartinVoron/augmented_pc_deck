@@ -17,8 +17,6 @@ function makeConfig(): Config {
   };
 }
 
-let tokens: Record<string, boolean>;
-
 // Faux Rust : répond selon la commande appelée.
 function fakeBackend(command: string, args?: Record<string, unknown>): Promise<unknown> {
   switch (command) {
@@ -26,15 +24,18 @@ function fakeBackend(command: string, args?: Record<string, unknown>): Promise<u
       return Promise.resolve(makeConfig());
     case "settings_save":
       return Promise.resolve(args?.config);
-    case "tokens_status":
-      return Promise.resolve({ ...tokens });
     case "window_autostart_get":
       return Promise.resolve(false);
     case "window_autostart_set":
       return Promise.resolve();
-    case "tokens_delete":
-      tokens[args?.kind as string] = false;
-      return Promise.resolve();
+    case "claude_status":
+      return Promise.resolve({
+        server: { state: "listening" },
+        port: 47821,
+        scriptPath: "C:\\deck\\claude-hook.ps1",
+        scriptInstalled: false,
+        settingsSnippet: "{}",
+      });
     default:
       return Promise.reject({ code: "other", message: `commande inconnue : ${command}` });
   }
@@ -42,7 +43,6 @@ function fakeBackend(command: string, args?: Record<string, unknown>): Promise<u
 
 describe("SettingsScreen", () => {
   beforeEach(async () => {
-    tokens = { github: false, gmail: false, claude: true };
     mockedInvoke.mockReset();
     mockedInvoke.mockImplementation((command, args) =>
       fakeBackend(command, args as Record<string, unknown>),
@@ -88,15 +88,12 @@ describe("SettingsScreen", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("window_autostart_set", { enabled: true });
   });
 
-  it("supprime un jeton après confirmation", async () => {
+  it("affiche la mise en place du hook de Claude", async () => {
     render(SettingsScreen, { onclose: () => {} });
 
     await fireEvent.click(screen.getByRole("button", { name: "Claude" }));
-    await fireEvent.click(await screen.findByRole("button", { name: "Supprimer le jeton" }));
-    await fireEvent.click(screen.getByRole("button", { name: "Confirmer la suppression" }));
 
-    expect(mockedInvoke).toHaveBeenCalledWith("tokens_delete", { kind: "claude" });
-    expect(await screen.findByText("Aucun jeton Claude enregistré.")).toBeTruthy();
+    expect(await screen.findByText(/127.0.0.1:47821/)).toBeTruthy();
   });
 
   it("indique qu'un module n'a pas encore de réglage", async () => {
