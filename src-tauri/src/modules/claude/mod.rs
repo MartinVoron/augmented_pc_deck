@@ -3,7 +3,8 @@
 //! Claude Code lance un « hook » (une commande) quand il attend une réponse ou
 //! qu'il a fini. Ce hook est un petit script PowerShell, créé par l'application,
 //! qui transmet l'événement au serveur local (voir [`server`]). Les événements sont
-//! gardés en mémoire et envoyés à l'interface avec [`CHANGED_EVENT`].
+//! gardés en mémoire, envoyés à l'interface avec [`CHANGED_EVENT`], et signalés par
+//! une notification Windows.
 //!
 //! Mise en place : voir `docs/claude-hook.md`.
 
@@ -22,6 +23,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
 use crate::error::{AppError, AppResult};
+use crate::notifications;
 use crate::tokens::{TokenKind, TokenStore};
 
 pub use events::ClaudeEvent;
@@ -149,13 +151,22 @@ fn receive<R: Runtime>(app: &AppHandle<R>, body: &[u8]) -> server::Status {
         event.kind,
         event.project
     );
+    let notification = events::notification(&event);
     if let Ok(mut list) = state.events.lock() {
         events::push(&mut list, event);
     }
+    emit_changed(app, &state);
+    if let Err(e) = notifications::notify(app, &notification) {
+        log::warn!("notification Claude impossible : {e}");
+    }
+    server::Status::Accepted
+}
+
+/// Envoie tous les événements à l'interface.
+fn emit_changed<R: Runtime>(app: &AppHandle<R>, state: &ClaudeState) {
     if let Err(e) = app.emit(CHANGED_EVENT, state.events()) {
         log::warn!("impossible de prévenir l'interface d'un événement Claude : {e}");
     }
-    server::Status::Accepted
 }
 
 /// Démarre le serveur local. Appelé une fois, au lancement de l'application.
@@ -233,6 +244,15 @@ pub fn claude_regenerate_token<R: Runtime>(
 #[tauri::command]
 pub fn claude_events(state: State<'_, ClaudeState>) -> Vec<ClaudeEvent> {
     state.events()
+}
+
+/// Efface tous les événements.
+#[tauri::command]
+pub fn claude_clear<R: Runtime>(app: AppHandle<R>, state: State<'_, ClaudeState>) {
+    if let Ok(mut list) = state.events.lock() {
+        list.clear();
+    }
+    emit_changed(&app, &state);
 }
 
 #[cfg(test)]

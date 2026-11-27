@@ -69,6 +69,7 @@ pub fn run() {
             claude::claude_install_hook,
             claude::claude_regenerate_token,
             claude::claude_events,
+            claude::claude_clear,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
