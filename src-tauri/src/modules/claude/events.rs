@@ -8,6 +8,8 @@ use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 
+use crate::notifications::{Notification, Sound};
+
 /// Nombre d'événements gardés en mémoire.
 pub const MAX_EVENTS: usize = 50;
 
@@ -81,6 +83,22 @@ pub fn parse(body: &[u8], id: u64, now: u64) -> Result<Option<ClaudeEvent>, serd
     }))
 }
 
+/// Notification Windows d'un événement.
+pub fn notification(event: &ClaudeEvent) -> Notification {
+    match event.kind {
+        EventKind::Waiting => Notification {
+            title: format!("Claude attend votre réponse · {}", event.project),
+            body: event.message.clone(),
+            sound: Some(Sound::Reminder),
+        },
+        EventKind::Done => Notification {
+            title: format!("Claude a terminé · {}", event.project),
+            body: "La tâche est finie.".into(),
+            sound: Some(Sound::Default),
+        },
+    }
+}
+
 /// Ajoute un événement en tête de liste, en gardant les [`MAX_EVENTS`] plus récents.
 pub fn push(events: &mut VecDeque<ClaudeEvent>, event: ClaudeEvent) {
     events.push_front(event);
@@ -119,6 +137,18 @@ mod tests {
             None
         );
         assert!(parse(b"pas du json", 1, 0).is_err());
+    }
+
+    #[test]
+    fn notification_names_the_project() {
+        let body = br#"{"hook_event_name":"Notification","cwd":"C:\\dev\\deck","message":"Autoriser Bash ?"}"#;
+        let n = notification(&parse(body, 1, 0).unwrap().unwrap());
+        assert_eq!(n.title, "Claude attend votre réponse · deck");
+        assert_eq!(n.body, "Autoriser Bash ?");
+
+        let body = br#"{"hook_event_name":"Stop","cwd":"C:\\dev\\deck"}"#;
+        let n = notification(&parse(body, 2, 0).unwrap().unwrap());
+        assert_eq!(n.title, "Claude a terminé · deck");
     }
 
     #[test]
