@@ -169,7 +169,7 @@
 
 <h3 class="spaced">E-mails non lus</h3>
 <Toggle
-  label="Notification Windows pour chaque nouvel e-mail"
+  label="Notification pour chaque nouvel e-mail"
   checked={gmail.notifyNew}
   onchange={(notifyNew) => setGmail({ notifyNew })}
 />

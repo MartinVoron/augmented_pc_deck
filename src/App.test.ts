@@ -47,7 +47,7 @@ describe("App", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Ouvrir les paramètres" }));
 
     expect(screen.getByRole("heading", { name: "Paramètres" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Afficher les notifications Windows" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Afficher les notifications" })).toBeTruthy();
   });
 
   it("affiche un message clair si le Rust ne répond pas", async () => {
