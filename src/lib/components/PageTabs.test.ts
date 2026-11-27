@@ -119,6 +119,31 @@ describe("pages de tuiles", () => {
     );
   });
 
+  it("s'ouvre sur l'écran d'accueil, qui ne peut pas être supprimé", async () => {
+    current.layout.pages = [
+      startPages[0],
+      {
+        id: "accueil",
+        name: "Accueil",
+        home: true,
+        tiles: [{ id: "clock-2", kind: "clock", title: "Mon horloge", size: "2x1" }],
+      },
+    ];
+    await openApp();
+    await vi.waitFor(() => expect(tileTitles()).toEqual(["Mon horloge"]));
+    expect(screen.getByRole("tab", { name: "Accueil" }).getAttribute("aria-selected")).toBe("true");
+
+    await fireEvent.click(screen.getByRole("tab", { name: "Principal" }));
+    expect(tileTitles()).toEqual(["Minuteurs"]);
+    await fireEvent.click(screen.getByRole("tab", { name: "Accueil" }));
+    expect(tileTitles()).toEqual(["Mon horloge"]);
+
+    await fireEvent.click(screen.getByRole("button", { name: /Modifier la disposition/ }));
+    const remove = screen.getByRole("button", { name: "Supprimer la page Accueil" });
+    expect(remove).toHaveProperty("disabled", true);
+    expect(remove.getAttribute("title")).toBe("L'écran d'accueil ne peut pas être supprimé");
+  });
+
   it("cache les onglets quand il n'y a qu'une page", async () => {
     current.layout.pages = [startPages[0]];
     await openApp();

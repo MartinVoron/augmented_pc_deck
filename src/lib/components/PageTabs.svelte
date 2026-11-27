@@ -4,10 +4,10 @@
   une page (vide ou à partir d'un modèle). Chaque changement est enregistré tout de suite.
 -->
 <script lang="ts">
-  import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Trash2, X } from "@lucide/svelte";
+  import { ArrowLeft, ArrowRight, Check, House, Pencil, Plus, Trash2, X } from "@lucide/svelte";
   import { tick } from "svelte";
   import type { PageConfig } from "../grid/defaultLayout";
-  import { sanitizePages } from "../grid/layout";
+  import { pageToShow, sanitizePages } from "../grid/layout";
   import { MAX_PAGE_NAME, movePage, removePage, renamePage } from "../grid/pages";
   import { settings, updateSettings } from "../modules/settings/state.svelte";
   import NewPageDialog from "./NewPageDialog.svelte";
@@ -19,7 +19,7 @@
   }: { currentId: string; editing?: boolean; onselect: (id: string) => void } = $props();
 
   let pages = $derived(sanitizePages(settings.config?.layout.pages));
-  let current = $derived(pages.find((p) => p.id === currentId) ?? pages[0]);
+  let current = $derived(pageToShow(pages, currentId));
   let index = $derived(pages.indexOf(current));
   let deleteDetail = $derived(
     current.tiles.length === 0
@@ -88,6 +88,7 @@
         tabindex={page.id === current.id ? 0 : -1}
         onclick={() => onselect(page.id)}
       >
+        {#if page.home}<House size={14} aria-hidden="true" />{/if}
         {page.name}
         {#if editing}<span class="count">{page.tiles.length}</span>{/if}
       </button>
@@ -159,8 +160,12 @@
           type="button"
           class="icon-button danger"
           aria-label="Supprimer la page {current.name}"
-          disabled={pages.length <= 1}
-          title={pages.length <= 1 ? "Il faut garder au moins une page" : undefined}
+          disabled={pages.length <= 1 || current.home}
+          title={current.home
+            ? "L'écran d'accueil ne peut pas être supprimé"
+            : pages.length <= 1
+              ? "Il faut garder au moins une page"
+              : undefined}
           onclick={() => (confirmingDelete = true)}
         >
           <Trash2 size={14} />

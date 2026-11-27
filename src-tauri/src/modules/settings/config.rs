@@ -7,7 +7,7 @@ use crate::modules::weather::Place;
 
 /// Version actuelle du format du fichier de configuration.
 /// À augmenter à chaque changement de format, en ajoutant une étape dans [`migrate`].
-pub const CURRENT_VERSION: u32 = 2;
+pub const CURRENT_VERSION: u32 = 3;
 
 /// Configuration complète de l'application, enregistrée dans `config.json`.
 ///
@@ -114,6 +114,9 @@ pub struct Page {
     pub id: String,
     /// Nom affiché dans l'onglet.
     pub name: String,
+    /// Écran d'accueil : la page affichée à l'ouverture, qui ne peut pas être supprimée.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub home: bool,
     #[serde(default)]
     pub tiles: Vec<TileConfig>,
 }
@@ -218,26 +221,43 @@ impl TileConfig {
 }
 
 impl Default for Layout {
-    /// Disposition proposée au premier lancement : une page avec une tuile par module.
+    /// Disposition proposée au premier lancement : l'écran d'accueil (heure, météo
+    /// à Caen, tâches à faire), puis une page avec les autres modules.
     fn default() -> Self {
         Self {
-            pages: vec![Page {
-                id: "page-1".into(),
-                name: "Principal".into(),
-                tiles: vec![
-                    TileConfig::new("launcher", "Raccourcis", "2x1"),
-                    TileConfig::new("processes", "Processeur et mémoire", "2x1"),
-                    TileConfig::new("music", "Musique", "2x2"),
-                    TileConfig::new("timers", "Minuteurs", "1x1"),
-                    TileConfig::new("todos", "Tâches", "2x2"),
-                    TileConfig::new("github", "GitHub", "1x1"),
-                    TileConfig::new("gmail", "Gmail", "1x1"),
-                    TileConfig::new("claude", "Claude", "1x1"),
-                ],
-            }],
+            pages: vec![
+                Page {
+                    id: HOME_PAGE_ID.into(),
+                    name: HOME_PAGE_NAME.into(),
+                    home: true,
+                    tiles: vec![
+                        TileConfig::new("clock", "Horloge", "2x1"),
+                        TileConfig::new("weather", "Météo", "2x1"),
+                        TileConfig::new("todos", "Tâches à faire", "2x2"),
+                    ],
+                },
+                Page {
+                    id: "page-1".into(),
+                    name: "Principal".into(),
+                    home: false,
+                    tiles: vec![
+                        TileConfig::new("launcher", "Raccourcis", "2x1"),
+                        TileConfig::new("processes", "Processeur et mémoire", "2x1"),
+                        TileConfig::new("music", "Musique", "2x2"),
+                        TileConfig::new("timers", "Minuteurs", "1x1"),
+                        TileConfig::new("github", "GitHub", "1x1"),
+                        TileConfig::new("gmail", "Gmail", "1x1"),
+                        TileConfig::new("claude", "Claude", "1x1"),
+                    ],
+                },
+            ],
         }
     }
 }
+
+/// Identifiant et nom de l'écran d'accueil.
+const HOME_PAGE_ID: &str = "accueil";
+const HOME_PAGE_NAME: &str = "Accueil";
 
 /// Raison pour laquelle un fichier n'a pas pu être lu.
 #[derive(Debug, PartialEq, Eq)]
@@ -277,8 +297,10 @@ fn migrate(value: &mut Value) -> Result<(), ParseError> {
         return Err(ParseError::TooRecent(version));
     }
     while version < CURRENT_VERSION {
-        if version == 1 {
-            tiles_into_pages(value);
+        match version {
+            1 => tiles_into_pages(value),
+            2 => add_home_page(value),
+            _ => {}
         }
         version += 1;
     }
@@ -299,18 +321,91 @@ fn tiles_into_pages(value: &mut Value) {
     }
 }
 
+/// Version 2 → 3 : ajoute l'écran d'accueil en tête (heure, météo, tâches).
+/// La première liste de tâches existante y est déplacée, avec ses tâches.
+fn add_home_page(value: &mut Value) {
+    let Some(pages) = value
+        .get_mut("layout")
+        .and_then(|l| l.get_mut("pages"))
+        .and_then(Value::as_array_mut)
+    else {
+        return;
+    };
+    if pages
+        .iter()
+        .any(|p| p.get("home") == Some(&Value::Bool(true)))
+    {
+        return;
+    }
+    let ids: Vec<String> = pages
+        .iter()
+        .filter_map(|p| p.get("tiles").and_then(Value::as_array))
+        .flatten()
+        .filter_map(|t| t.get("id").and_then(Value::as_str).map(String::from))
+        .collect();
+    let free_id = |kind: &str| {
+        (1..)
+            .map(|n| format!("{kind}-{n}"))
+            .find(|id| !ids.contains(id))
+            .unwrap_or_default()
+    };
+    let tile = |kind: &str, title: &str, size: &str| serde_json::json!({ "id": free_id(kind), "kind": kind, "title": title, "size": size });
+    let clock = tile("clock", "Horloge", "2x1");
+    let weather = tile("weather", "Météo", "2x1");
+
+    // Déplace la première liste de tâches, pour garder les tâches déjà notées.
+    let mut todos = None;
+    for page in pages.iter_mut() {
+        let Some(tiles) = page.get_mut("tiles").and_then(Value::as_array_mut) else {
+            continue;
+        };
+        if let Some(index) = tiles
+            .iter()
+            .position(|t| t.get("kind").and_then(Value::as_str) == Some("todos"))
+        {
+            let mut moved = tiles.remove(index);
+            moved["size"] = Value::from("2x2");
+            todos = Some(moved);
+            break;
+        }
+    }
+    let todos = todos.unwrap_or_else(|| tile("todos", "Tâches à faire", "2x2"));
+
+    let id_taken = pages
+        .iter()
+        .any(|p| p.get("id").and_then(Value::as_str) == Some(HOME_PAGE_ID));
+    let page_id = if id_taken {
+        format!("{HOME_PAGE_ID}-{}", pages.len() + 1)
+    } else {
+        HOME_PAGE_ID.to_string()
+    };
+    pages.insert(
+        0,
+        serde_json::json!({
+            "id": page_id,
+            "name": HOME_PAGE_NAME,
+            "home": true,
+            "tiles": [clock, weather, todos],
+        }),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn default_config_has_current_version_and_one_tile_per_module() {
+    fn default_config_opens_on_the_home_page_and_has_every_module() {
         let config = Config::default();
         assert_eq!(config.version, CURRENT_VERSION);
         assert!(config.general.notifications_enabled);
         assert_eq!(config.general.language, "fr");
         assert!(!config.window.always_on_top && !config.window.fullscreen);
-        assert_eq!(config.layout.pages[0].tiles.len(), 8);
+        let pages = &config.layout.pages;
+        assert!(pages[0].home);
+        let kinds: Vec<&str> = pages[0].tiles.iter().map(|t| t.kind.as_str()).collect();
+        assert_eq!(kinds, ["clock", "weather", "todos"]);
+        assert_eq!(pages.iter().map(|p| p.tiles.len()).sum::<usize>(), 10);
     }
 
     #[test]
@@ -331,10 +426,10 @@ mod tests {
 
     #[test]
     fn launcher_tile_keeps_its_shortcuts() {
-        let text = r#"{ "layout": { "tiles": [{
+        let text = r#"{ "version": 3, "layout": { "pages": [{ "id": "p", "name": "P", "tiles": [{
             "id": "launcher-1", "kind": "launcher", "title": "Raccourcis", "size": "2x1",
             "shortcuts": [{ "id": "s1", "name": "Bloc-notes", "target": "C:\\Windows\\notepad.exe" }]
-        }, { "id": "timers-1", "kind": "timers", "title": "Minuteurs", "size": "1x1" }] } }"#;
+        }, { "id": "timers-1", "kind": "timers", "title": "Minuteurs", "size": "1x1" }] }] } }"#;
         let config = parse(text).unwrap();
         let shortcut = &config.layout.pages[0].tiles[0].shortcuts[0];
         assert_eq!(shortcut.name, "Bloc-notes");
@@ -347,10 +442,10 @@ mod tests {
 
     #[test]
     fn timers_tile_keeps_its_countdowns() {
-        let text = r#"{ "layout": { "tiles": [{
+        let text = r#"{ "version": 3, "layout": { "pages": [{ "id": "p", "name": "P", "tiles": [{
             "id": "timers-1", "kind": "timers", "title": "Minuteurs", "size": "1x1",
             "timers": [{ "id": "minuteur-1", "name": "Thé", "durationSecs": 240 }]
-        }] } }"#;
+        }] }] } }"#;
         let config = parse(text).unwrap();
         assert_eq!(config.layout.pages[0].tiles[0].timers[0].duration_secs, 240);
         assert_eq!(config.layout.pages[0].tiles[0].pomodoro, None);
@@ -358,10 +453,10 @@ mod tests {
 
     #[test]
     fn todos_tile_keeps_its_tasks_and_option() {
-        let text = r#"{ "layout": { "tiles": [{
+        let text = r#"{ "version": 3, "layout": { "pages": [{ "id": "p", "name": "P", "tiles": [{
             "id": "todos-1", "kind": "todos", "title": "Tâches", "size": "2x2", "hideDone": true,
             "todos": [{ "id": "t1", "text": "Appeler le garage", "done": true }, { "id": "t2", "text": "Courses" }]
-        }] } }"#;
+        }] }] } }"#;
         let config = parse(text).unwrap();
         let tile = &config.layout.pages[0].tiles[0];
         assert!(tile.hide_done);
@@ -372,9 +467,9 @@ mod tests {
 
     #[test]
     fn clock_tile_keeps_its_seconds_option() {
-        let text = r#"{ "layout": { "tiles": [{
+        let text = r#"{ "version": 3, "layout": { "pages": [{ "id": "p", "name": "P", "tiles": [{
             "id": "clock-1", "kind": "clock", "title": "Horloge", "size": "2x1", "showSeconds": true
-        }] } }"#;
+        }] }] } }"#;
         let config = parse(text).unwrap();
         assert!(config.layout.pages[0].tiles[0].show_seconds);
         let written = serde_json::to_string(&config).unwrap();
@@ -383,10 +478,10 @@ mod tests {
 
     #[test]
     fn weather_tile_keeps_its_city() {
-        let text = r#"{ "layout": { "tiles": [{
+        let text = r#"{ "version": 3, "layout": { "pages": [{ "id": "p", "name": "P", "tiles": [{
             "id": "weather-1", "kind": "weather", "title": "Météo", "size": "2x1",
             "location": { "name": "Caen", "latitude": 49.18, "longitude": -0.36, "detail": "Normandie, France" }
-        }] } }"#;
+        }] }] } }"#;
         let config = parse(text).unwrap();
         assert_eq!(
             config.layout.pages[0].tiles[0]
@@ -401,22 +496,59 @@ mod tests {
     }
 
     #[test]
-    fn version_1_tiles_become_the_first_page() {
+    fn version_1_tiles_become_a_page_after_the_home_page() {
         let text = r#"{ "version": 1, "layout": { "tiles": [
             { "id": "todos-1", "kind": "todos", "title": "Tâches", "size": "2x2",
               "todos": [{ "id": "t1", "text": "Courses" }] }
         ] } }"#;
         let config = parse(text).unwrap();
-        assert_eq!(config.version, 2);
-        assert_eq!(config.layout.pages.len(), 1);
-        let page = &config.layout.pages[0];
-        assert_eq!(page.name, "Principal");
-        assert_eq!(page.tiles[0].todos[0].text, "Courses");
+        assert_eq!(config.version, CURRENT_VERSION);
+        let names: Vec<&str> = config
+            .layout
+            .pages
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect();
+        assert_eq!(names, ["Accueil", "Principal"]);
+        // La liste de tâches passe sur l'écran d'accueil, avec ses tâches.
+        let home = &config.layout.pages[0];
+        assert!(home.home);
+        assert_eq!(home.tiles[2].todos[0].text, "Courses");
+        assert!(config.layout.pages[1].tiles.is_empty());
+    }
+
+    #[test]
+    fn version_2_gets_a_home_page_with_unique_tile_ids() {
+        let text = r#"{ "version": 2, "layout": { "pages": [
+            { "id": "page-1", "name": "Travail", "tiles": [
+                { "id": "clock-1", "kind": "clock", "title": "Horloge", "size": "1x1" },
+                { "id": "todos-1", "kind": "todos", "title": "Courses", "size": "1x1",
+                  "todos": [{ "id": "t1", "text": "Pain" }] }] }
+        ] } }"#;
+        let config = parse(text).unwrap();
+        let home = &config.layout.pages[0];
+        assert_eq!(
+            (home.id.as_str(), home.name.as_str()),
+            ("accueil", "Accueil")
+        );
+        let ids: Vec<&str> = home.tiles.iter().map(|t| t.id.as_str()).collect();
+        assert_eq!(ids, ["clock-2", "weather-1", "todos-1"]);
+        assert_eq!(home.tiles[2].title, "Courses");
+        assert_eq!(home.tiles[2].size, "2x2");
+        assert_eq!(config.layout.pages[1].tiles.len(), 1);
+    }
+
+    #[test]
+    fn version_2_without_todos_gets_a_new_list() {
+        let text = r#"{ "version": 2, "layout": { "pages": [{ "id": "p", "name": "P" }] } }"#;
+        let config = parse(text).unwrap();
+        assert_eq!(config.layout.pages[0].tiles[2].id, "todos-1");
+        assert_eq!(config.layout.pages[0].tiles[2].title, "Tâches à faire");
     }
 
     #[test]
     fn reads_several_pages() {
-        let text = r#"{ "version": 2, "layout": { "pages": [
+        let text = r#"{ "version": 3, "layout": { "pages": [
             { "id": "page-1", "name": "Travail", "tiles": [
                 { "id": "github-1", "kind": "github", "title": "GitHub", "size": "1x1" }] },
             { "id": "page-2", "name": "Vide" }

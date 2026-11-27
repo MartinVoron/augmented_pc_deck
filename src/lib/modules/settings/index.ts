@@ -32,6 +32,8 @@ export interface TileSettings {
 export interface PageSettings {
   id: string;
   name: string;
+  /** Écran d'accueil : affiché à l'ouverture, il ne peut pas être supprimé. */
+  home?: boolean;
   tiles: TileSettings[];
 }
 

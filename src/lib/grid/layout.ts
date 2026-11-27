@@ -41,10 +41,20 @@ export function sanitizeTiles(tiles: RawTile[]): TileConfig[] {
 
 /** Pages lues dans la configuration ; la disposition par défaut tant qu'elle n'est pas chargée. */
 export function sanitizePages(
-  pages: { id: string; name: string; tiles?: RawTile[] }[] | undefined,
+  pages: { id: string; name: string; home?: boolean; tiles?: RawTile[] }[] | undefined,
 ): PageConfig[] {
   if (!pages || pages.length === 0) return DEFAULT_PAGES;
   return pages.map((page) => ({ ...page, tiles: sanitizeTiles(page.tiles ?? []) }));
+}
+
+/** Écran d'accueil : la page marquée comme telle, sinon la première. */
+export function homePage(pages: PageConfig[]): PageConfig {
+  return pages.find((page) => page.home) ?? pages[0];
+}
+
+/** Page à afficher : celle demandée si elle existe, sinon l'écran d'accueil. */
+export function pageToShow(pages: PageConfig[], id: string | undefined): PageConfig {
+  return pages.find((page) => page.id === id) ?? homePage(pages);
 }
 
 /** Toutes les tuiles de toutes les pages. */

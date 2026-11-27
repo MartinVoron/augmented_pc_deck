@@ -88,9 +88,9 @@ export function renamePage(pages: PageConfig[], id: string, name: string): PageC
   return pages.map((page) => (page.id === id ? { ...page, name: cleanPageName(name) } : page));
 }
 
-/** Supprime une page ; la dernière page restante ne peut pas l'être. */
+/** Supprime une page ; l'écran d'accueil et la dernière page restante ne peuvent pas l'être. */
 export function removePage(pages: PageConfig[], id: string): PageConfig[] {
-  if (pages.length <= 1) return pages;
+  if (pages.length <= 1 || pages.some((page) => page.id === id && page.home)) return pages;
   return pages.filter((page) => page.id !== id);
 }
 

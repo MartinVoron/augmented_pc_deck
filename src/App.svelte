@@ -2,7 +2,7 @@
   import { Check, LayoutGrid, Settings } from "@lucide/svelte";
   import Dashboard from "./lib/components/Dashboard.svelte";
   import PageTabs from "./lib/components/PageTabs.svelte";
-  import { sanitizePages } from "./lib/grid/layout";
+  import { pageToShow, sanitizePages } from "./lib/grid/layout";
   import TitleBar from "./lib/components/TitleBar.svelte";
   import { getAppVersion } from "./lib/modules/app";
   import SettingsScreen from "./lib/modules/settings/SettingsScreen.svelte";
@@ -12,11 +12,11 @@
   let error = $state("");
   let showSettings = $state(false);
   let editing = $state(false);
-  /** Page affichée (la première tant qu'aucune n'est choisie). */
+  /** Page affichée ; l'application s'ouvre sur l'écran d'accueil. */
   let pageId = $state("");
 
   let pages = $derived(sanitizePages(settings.config?.layout.pages));
-  let currentPageId = $derived(pages.some((p) => p.id === pageId) ? pageId : pages[0].id);
+  let currentPageId = $derived(pageToShow(pages, pageId).id);
 
   // Vérifie que l'interface et le Rust communiquent bien.
   getAppVersion()

@@ -54,6 +54,11 @@ describe("pages", () => {
     expect(removePage(single, "page-1")).toBe(single);
   });
 
+  it("ne supprime jamais l'écran d'accueil", () => {
+    const withHome = [{ ...pages[0], home: true }, pages[1]];
+    expect(removePage(withHome, "page-1")).toBe(withHome);
+  });
+
   it("déplace une page sans sortir des limites", () => {
     expect(movePage(pages, "page-2", -1).map((p) => p.id)).toEqual(["page-2", "page-1"]);
     expect(movePage(pages, "page-1", -1)).toBe(pages);
