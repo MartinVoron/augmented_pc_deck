@@ -1,5 +1,12 @@
 # Augmented PC Deck
 
+[![Dernière version](https://img.shields.io/github/v/release/MartinVoron/augmented_pc_deck?label=version&color=2ea44f)](https://github.com/MartinVoron/augmented_pc_deck/releases/latest)
+[![Téléchargements](https://img.shields.io/github/downloads/MartinVoron/augmented_pc_deck/total?label=t%C3%A9l%C3%A9chargements)](https://github.com/MartinVoron/augmented_pc_deck/releases)
+[![CI](https://github.com/MartinVoron/augmented_pc_deck/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinVoron/augmented_pc_deck/actions/workflows/ci.yml)
+
+**[⬇ Télécharger l'installateur Windows](https://github.com/MartinVoron/augmented_pc_deck/releases/latest)**
+· [Guide d'installation et de mise en place](docs/installation.md)
+
 Tableau de bord de bureau, en local, pour Windows, façon Stream Deck : raccourcis
 d'applications, gestionnaire de tâches, minuteurs, liste de tâches, musique en cours,
 GitHub, Gmail et notifications de Claude Code.
@@ -7,28 +14,21 @@ GitHub, Gmail et notifications de Claude Code.
 Construit avec [Tauri 2](https://v2.tauri.app/) (Rust) et [Svelte 5](https://svelte.dev/)
 (TypeScript, Vite).
 
+![Augmented PC Deck : page d'accueil avec horloge, météo, Claude, tâches et Gmail](docs/images/accueil.png)
+
 ## Installer l'application
 
 Pour simplement utiliser l'application, pas besoin de la compiler :
 
-1. Ouvrir la page [Releases](https://github.com/MartinVoron/augmented_pc_deck/releases/latest)
-   et télécharger `Augmented.PC.Deck_<version>_x64-setup.exe` (conseillé) ou le `.msi`.
-2. Lancer le fichier. L'installation se fait pour l'utilisateur courant, sans droits
-   administrateur, dans `%LOCALAPPDATA%\Augmented PC Deck`. Le `.msi`, lui, installe pour
-   toute la machine et demande les droits administrateur.
-3. Windows peut afficher « Windows a protégé votre ordinateur », car l'installateur n'est pas
-   signé : cliquer sur **Informations complémentaires**, puis **Exécuter quand même**.
+1. Ouvrir la [dernière version](https://github.com/MartinVoron/augmented_pc_deck/releases/latest)
+   et, dans **Assets**, télécharger le fichier `…_x64-setup.exe` (conseillé) ou le `.msi`.
+2. Le lancer. Si Windows affiche « Windows a protégé votre ordinateur » (l'installateur
+   n'est pas signé) : **Informations complémentaires**, puis **Exécuter quand même**.
+3. L'application apparaît dans le menu Démarrer (« Augmented PC Deck »).
 
-L'application apparaît ensuite dans le menu Démarrer (« Augmented PC Deck »). Pour la lancer
-à l'ouverture de session, activer **Lancer au démarrage de Windows** dans ses paramètres.
-
-**Mettre à jour** : installer la nouvelle version par-dessus l'ancienne. Les réglages, tuiles
-et jetons sont gardés.
-
-**Désinstaller** : Paramètres de Windows → Applications → Applications installées →
-Augmented PC Deck → Désinstaller. Les réglages sont gardés, sauf si on coche « Supprimer les
-données de l'application ». Penser à désactiver d'abord **Lancer au démarrage de Windows**,
-sinon une entrée vide reste dans la liste des applications de démarrage.
+Le **[guide d'installation et de mise en place](docs/installation.md)** explique la suite,
+module par module : raccourcis, minuteurs, tâches, musique, météo, pages, GitHub, Gmail et
+notifications de Claude Code, ainsi que la mise à jour et la désinstallation.
 
 Une nouvelle version est publiée à chaque fusion de la PR `version/vX.Y.Z` (voir
 [CONTRIBUTING.md](CONTRIBUTING.md#6-versions)).
