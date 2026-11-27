@@ -56,3 +56,25 @@ export function regenerateToken(): Promise<ClaudeStatus> {
 export function getClaudeEvents(): Promise<ClaudeEvent[]> {
   return call<ClaudeEvent[]>("claude_events");
 }
+
+/** Efface tous les événements. */
+export function clearClaudeEvents(): Promise<void> {
+  return call<void>("claude_clear");
+}
+
+/**
+ * Sessions qui attendent encore une réponse : celles dont le dernier événement
+ * est « attend une réponse » (un « terminé » plus récent l'annule).
+ * Les événements arrivent du plus récent au plus ancien.
+ */
+export function waitingSessions(events: ClaudeEvent[]): ClaudeEvent[] {
+  const seen = new Set<string>();
+  const waiting: ClaudeEvent[] = [];
+  for (const event of events) {
+    const key = event.sessionId || `${event.project}:${event.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (event.kind === "waiting") waiting.push(event);
+  }
+  return waiting;
+}

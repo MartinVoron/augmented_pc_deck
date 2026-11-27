@@ -3,6 +3,7 @@
 -->
 <script lang="ts">
   import type { TileConfig } from "../grid/defaultLayout";
+  import ClaudeTile from "../modules/claude/ClaudeTile.svelte";
   import GithubTile from "../modules/github/GithubTile.svelte";
   import GmailTile from "../modules/gmail/GmailTile.svelte";
   import LauncherTile from "../modules/launcher/LauncherTile.svelte";
@@ -28,6 +29,8 @@
   <GithubTile {tile} />
 {:else if tile.kind === "gmail"}
   <GmailTile {tile} />
+{:else if tile.kind === "claude"}
+  <ClaudeTile {tile} />
 {:else}
   <p class="soon">Bientôt disponible</p>
 {/if}
