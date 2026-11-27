@@ -11,6 +11,7 @@ export const KIND_TITLES: Record<TileKind, string> = {
   github: "GitHub",
   gmail: "Gmail",
   claude: "Claude",
+  clock: "Horloge",
 };
 
 export const TILE_SIZES = Object.keys(TILE_SPANS) as TileSize[];

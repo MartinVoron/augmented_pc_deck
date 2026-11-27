@@ -21,6 +21,8 @@ export interface TileSettings {
   todos?: Todo[];
   /** Masque les tâches terminées. */
   hideDone?: boolean;
+  /** Affiche les secondes d'une tuile Horloge. */
+  showSeconds?: boolean;
 }
 
 /** Configuration complète de l'application (fichier `config.json`). */

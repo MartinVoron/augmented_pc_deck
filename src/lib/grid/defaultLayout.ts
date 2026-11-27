@@ -6,7 +6,7 @@ import type { TileAccent, TileSize } from "./types";
 
 /** Module affiché par une tuile. */
 export type TileKind =
-  "launcher" | "processes" | "timers" | "todos" | "music" | "github" | "gmail" | "claude";
+  "launcher" | "processes" | "timers" | "todos" | "music" | "github" | "gmail" | "claude" | "clock";
 
 export interface TileConfig {
   id: string;
@@ -23,6 +23,8 @@ export interface TileConfig {
   todos?: Todo[];
   /** Masque les tâches terminées. */
   hideDone?: boolean;
+  /** Affiche les secondes d'une tuile Horloge. */
+  showSeconds?: boolean;
 }
 
 /** Couleur d'accent de chaque module. */
@@ -35,6 +37,7 @@ export const KIND_ACCENTS: Record<TileKind, TileAccent> = {
   github: "purple",
   gmail: "danger",
   claude: "warning",
+  clock: "accent",
 };
 
 /** Disposition proposée au premier lancement. */

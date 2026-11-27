@@ -16,6 +16,7 @@
     sanitizeLayout,
     TILE_SIZES,
   } from "../grid/layout";
+  import { updateTile } from "../grid/state";
   import type { TileSize } from "../grid/types";
   import { settings, updateSettings } from "../modules/settings/state.svelte";
   import ShortcutsDialog from "../modules/launcher/ShortcutsDialog.svelte";
@@ -107,6 +108,19 @@
             {/each}
           </select>
         </label>
+        {#if tile.kind === "clock"}
+          <label class="option">
+            <input
+              type="checkbox"
+              checked={tile.showSeconds ?? false}
+              onchange={(event) => {
+                const checked = event.currentTarget.checked;
+                void updateTile(tile.id, (t) => (t.showSeconds = checked));
+              }}
+            />
+            Afficher les secondes
+          </label>
+        {/if}
         {#if tile.kind === "launcher"}
           <button type="button" class="shortcuts" onclick={() => (shortcutsTileId = tile.id)}>
             <Pencil size={14} /> Raccourcis…
@@ -195,6 +209,13 @@
     background: var(--color-bg);
     color: var(--color-text);
     font: inherit;
+  }
+
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
   }
 
   .shortcuts {
