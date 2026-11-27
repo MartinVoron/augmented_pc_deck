@@ -7,11 +7,10 @@
   import type { Component } from "svelte";
   import { KIND_ICONS } from "../../grid/icons";
   import type { TileKind } from "../../grid/defaultLayout";
-  import type { TokenKind } from "../../tokens";
+  import ClaudeSection from "../claude/ClaudeSection.svelte";
   import GithubSection from "../github/GithubSection.svelte";
   import GmailSection from "../gmail/GmailSection.svelte";
   import GeneralSection from "./GeneralSection.svelte";
-  import TokenSection from "./TokenSection.svelte";
   import { settings } from "./state.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
@@ -29,11 +28,6 @@
     { id: "gmail", label: "Gmail", icon: KIND_ICONS.gmail },
     { id: "claude", label: "Claude", icon: KIND_ICONS.claude },
   ];
-
-  /** Modules qui demandent un jeton de connexion. */
-  const tokenSections: Partial<Record<SectionId, TokenKind>> = {
-    claude: "claude",
-  };
 
   let current = $state<SectionId>("general");
   let section = $derived(sections.find((s) => s.id === current)!);
@@ -74,13 +68,10 @@
         <GithubSection />
       {:else if current === "gmail"}
         <GmailSection />
+      {:else if current === "claude"}
+        <ClaudeSection />
       {:else}
-        {@const token = tokenSections[current]}
-        {#if token}
-          <TokenSection kind={token} service={section.label} />
-        {:else}
-          <p class="hint">Aucun réglage pour l'instant.</p>
-        {/if}
+        <p class="hint">Aucun réglage pour l'instant.</p>
       {/if}
     </section>
   </div>
