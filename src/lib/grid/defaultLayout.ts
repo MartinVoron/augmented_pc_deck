@@ -57,11 +57,26 @@ export const KIND_ACCENTS: Record<TileKind, TileAccent> = {
 export interface PageConfig {
   id: string;
   name: string;
+  /** Écran d'accueil : affiché à l'ouverture, il ne peut pas être supprimé. */
+  home?: boolean;
   tiles: TileConfig[];
 }
 
-/** Disposition proposée au premier lancement : une page avec une tuile par module. */
+/**
+ * Disposition proposée au premier lancement : l'écran d'accueil (heure, météo à Caen,
+ * tâches à faire), puis une page avec les autres modules.
+ */
 export const DEFAULT_PAGES: PageConfig[] = [
+  {
+    id: "accueil",
+    name: "Accueil",
+    home: true,
+    tiles: [
+      { id: "clock-1", kind: "clock", title: "Horloge", size: "2x1" },
+      { id: "weather-1", kind: "weather", title: "Météo", size: "2x1" },
+      { id: "todos-1", kind: "todos", title: "Tâches à faire", size: "2x2" },
+    ],
+  },
   {
     id: "page-1",
     name: "Principal",
@@ -70,7 +85,6 @@ export const DEFAULT_PAGES: PageConfig[] = [
       { id: "processes-1", kind: "processes", title: "Processeur et mémoire", size: "2x1" },
       { id: "music-1", kind: "music", title: "Musique", size: "2x2" },
       { id: "timers-1", kind: "timers", title: "Minuteurs", size: "1x1" },
-      { id: "todos-1", kind: "todos", title: "Tâches", size: "2x2" },
       { id: "github-1", kind: "github", title: "GitHub", size: "1x1" },
       { id: "gmail-1", kind: "gmail", title: "Gmail", size: "1x1" },
       { id: "claude-1", kind: "claude", title: "Claude", size: "1x1" },

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PAGES, type TileConfig } from "./defaultLayout";
-import { addTile, moveTile, removeTile, resizeTile, sanitizePages, sanitizeTiles } from "./layout";
+import {
+  addTile,
+  moveTile,
+  pageToShow,
+  removeTile,
+  resizeTile,
+  sanitizePages,
+  sanitizeTiles,
+} from "./layout";
 
 const tiles: TileConfig[] = [
   { id: "a", kind: "timers", title: "A", size: "1x1" },
@@ -53,6 +61,23 @@ describe("disposition de la grille", () => {
     ]);
 
     expect(ids(result)).toEqual(["a"]);
+  });
+
+  it("affiche la page demandée, sinon l'écran d'accueil", () => {
+    const pages = [
+      { id: "a", name: "A", tiles: [] },
+      { id: "accueil", name: "Accueil", home: true, tiles: [] },
+    ];
+    expect(pageToShow(pages, "a").id).toBe("a");
+    expect(pageToShow(pages, "").id).toBe("accueil");
+    expect(pageToShow(pages, "inconnue").id).toBe("accueil");
+    expect(pageToShow([pages[0]], undefined).id).toBe("a");
+  });
+
+  it("propose l'écran d'accueil au premier lancement", () => {
+    const home = DEFAULT_PAGES[0];
+    expect(home.home).toBe(true);
+    expect(home.tiles.map((t) => t.kind)).toEqual(["clock", "weather", "todos"]);
   });
 
   it("utilise la disposition par défaut tant que la configuration n'est pas chargée", () => {

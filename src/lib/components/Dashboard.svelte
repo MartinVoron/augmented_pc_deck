@@ -12,6 +12,7 @@
     allTiles,
     KIND_TITLES,
     moveTile,
+    pageToShow,
     removeTile,
     resizeTile,
     sanitizePages,
@@ -26,11 +27,11 @@
   import TileContent from "./TileContent.svelte";
   import TileGrid from "./TileGrid.svelte";
 
-  /** `pageId` : page affichée (la première si absente ou inconnue). */
+  /** `pageId` : page affichée (l'écran d'accueil si absente ou inconnue). */
   let { editing = false, pageId }: { editing?: boolean; pageId?: string } = $props();
 
   let pages = $derived(sanitizePages(settings.config?.layout.pages));
-  let page = $derived(pages.find((p) => p.id === pageId) ?? pages[0]);
+  let page = $derived(pageToShow(pages, pageId));
   let tiles = $derived(page.tiles);
   let draggedId = $state<string | null>(null);
   let newKind = $state<TileKind>("timers");
