@@ -6,13 +6,18 @@
 -->
 <script lang="ts">
   import { BookOpen, ExternalLink, LogOut, RefreshCw } from "@lucide/svelte";
+  import Toggle from "../../components/Toggle.svelte";
   import { openInBrowser } from "../github";
+  import { settings, updateSettings } from "../settings/state.svelte";
   import {
+    clampRefreshMinutes,
     connectGmail,
     CREDENTIALS_URL,
     disconnectGmail,
     getGmailAccount,
     GUIDE_URL,
+    MAX_REFRESH_MINUTES,
+    MIN_REFRESH_MINUTES,
     type GmailAccount,
   } from ".";
 
@@ -69,6 +74,15 @@
   $effect(() => {
     void refresh();
   });
+
+  let gmail = $derived({
+    refreshMinutes: clampRefreshMinutes(settings.config?.gmail?.refreshMinutes),
+    notifyNew: settings.config?.gmail?.notifyNew ?? true,
+  });
+
+  function setGmail(change: Partial<typeof gmail>) {
+    void updateSettings((config) => (config.gmail = { ...gmail, ...change }));
+  }
 </script>
 
 <h3>Connexion</h3>
@@ -153,6 +167,25 @@
 
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
+<h3 class="spaced">E-mails non lus</h3>
+<Toggle
+  label="Notification Windows pour chaque nouvel e-mail"
+  checked={gmail.notifyNew}
+  onchange={(notifyNew) => setGmail({ notifyNew })}
+/>
+<label class="inline">
+  <span>Actualiser toutes les</span>
+  <input
+    type="number"
+    min={MIN_REFRESH_MINUTES}
+    max={MAX_REFRESH_MINUTES}
+    value={gmail.refreshMinutes}
+    onchange={(event) =>
+      setGmail({ refreshMinutes: clampRefreshMinutes(event.currentTarget.valueAsNumber) })}
+  />
+  <span>minutes</span>
+</label>
+
 <style>
   h3 {
     margin: 0 0 0.5rem;
@@ -161,6 +194,22 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-muted);
+  }
+
+  .spaced {
+    margin-top: 1.5rem;
+  }
+
+  label.inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    color: var(--color-text);
+  }
+
+  label.inline input {
+    width: 4.5rem;
   }
 
   form {
