@@ -7,7 +7,33 @@ GitHub, Gmail et notifications de Claude Code.
 Construit avec [Tauri 2](https://v2.tauri.app/) (Rust) et [Svelte 5](https://svelte.dev/)
 (TypeScript, Vite).
 
-## Prérequis (Windows 10 ou 11)
+## Installer l'application
+
+Pour simplement utiliser l'application, pas besoin de la compiler :
+
+1. Ouvrir la page [Releases](https://github.com/MartinVoron/augmented_pc_deck/releases/latest)
+   et télécharger `Augmented.PC.Deck_<version>_x64-setup.exe` (conseillé) ou le `.msi`.
+2. Lancer le fichier. L'installation se fait pour l'utilisateur courant, sans droits
+   administrateur, dans `%LOCALAPPDATA%\Augmented PC Deck`. Le `.msi`, lui, installe pour
+   toute la machine et demande les droits administrateur.
+3. Windows peut afficher « Windows a protégé votre ordinateur », car l'installateur n'est pas
+   signé : cliquer sur **Informations complémentaires**, puis **Exécuter quand même**.
+
+L'application apparaît ensuite dans le menu Démarrer (« Augmented PC Deck »). Pour la lancer
+à l'ouverture de session, activer **Lancer au démarrage de Windows** dans ses paramètres.
+
+**Mettre à jour** : installer la nouvelle version par-dessus l'ancienne. Les réglages, tuiles
+et jetons sont gardés.
+
+**Désinstaller** : Paramètres de Windows → Applications → Applications installées →
+Augmented PC Deck → Désinstaller. Les réglages sont gardés, sauf si on coche « Supprimer les
+données de l'application ». Penser à désactiver d'abord **Lancer au démarrage de Windows**,
+sinon une entrée vide reste dans la liste des applications de démarrage.
+
+Une nouvelle version est publiée à chaque fusion de la PR `version/vX.Y.Z` (voir
+[CONTRIBUTING.md](CONTRIBUTING.md#6-versions)).
+
+## Prérequis pour développer (Windows 10 ou 11)
 
 1. **Microsoft C++ Build Tools** : installer
    [Visual Studio Build Tools](https://visualstudio.microsoft.com/fr/visual-cpp-build-tools/)
@@ -135,7 +161,9 @@ dans le journal et la tuile affiche un message clair avec un bouton « Réessaye
 
 À chaque PR, le workflow [CI](.github/workflows/ci.yml) vérifie le projet sur une machine
 Windows : `npm run lint`, `npm run check`, les tests de l'interface et du Rust, puis la
-compilation de l'application. Il échoue dès qu'une étape échoue. Les dépendances npm et la
+compilation de l'application avec ses installateurs. Il échoue dès qu'une étape échoue.
+Les installateurs produits sont joints à la vérification (artefact `installateurs-windows`,
+gardé 14 jours) : on peut les essayer avant de fusionner. Les dépendances npm et la
 compilation Rust sont mises en cache pour aller plus vite.
 
 ## Contribuer
