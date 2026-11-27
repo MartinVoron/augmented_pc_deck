@@ -6,6 +6,7 @@ pub mod notifications;
 pub mod tokens;
 pub mod window;
 
+use modules::claude::{self, ClaudeState};
 use modules::gmail::{self, GmailState};
 use modules::music::{self, MusicState};
 use modules::processes::{self, ProcessMonitor};
@@ -30,6 +31,7 @@ pub fn run() {
         .manage(Timers::default())
         .manage(MusicState::default())
         .manage(GmailState::default())
+        .manage(ClaudeState::default())
         .on_window_event(window::on_window_event)
         .invoke_handler(tauri::generate_handler![
             app::app_version,
@@ -63,11 +65,16 @@ pub fn run() {
             gmail::gmail_account,
             gmail::gmail_disconnect,
             gmail::gmail_unread,
+            claude::claude_status,
+            claude::claude_install_hook,
+            claude::claude_regenerate_token,
+            claude::claude_events,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
             settings::init(app.handle())?;
             window::create_tray(app.handle())?;
+            claude::start(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
