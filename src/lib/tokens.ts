@@ -11,7 +11,7 @@ export function getTokenStatus(): Promise<Record<TokenKind, boolean>> {
   return call<Record<TokenKind, boolean>>("tokens_status");
 }
 
-/** Enregistre (ou remplace) un jeton dans le Gestionnaire d'identification Windows. */
+/** Enregistre (ou remplace) un jeton dans le magasin de jetons du système. */
 export function saveToken(kind: TokenKind, value: string): Promise<void> {
   return call<void>("tokens_set", { kind, value });
 }

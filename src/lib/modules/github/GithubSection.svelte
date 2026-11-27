@@ -1,7 +1,7 @@
 <!--
   Paramètres GitHub : connexion avec un jeton personnel, compte connecté, déconnexion.
   Le jeton saisi part directement au Rust, qui le vérifie puis le range dans le
-  Gestionnaire d'identification Windows ; l'interface ne le revoit jamais.
+  magasin de jetons du système ; l'interface ne le revoit jamais.
 -->
 <script lang="ts">
   import { ExternalLink, LogOut } from "@lucide/svelte";
@@ -117,7 +117,8 @@
   <form onsubmit={connect}>
     <p class="hint">
       Créez un jeton personnel sur GitHub avec les droits « repo » et « notifications », puis
-      collez-le ici. Il est gardé dans le Gestionnaire d'identification Windows.
+      collez-le ici. Il est gardé dans le coffre du système (Gestionnaire d'identification sous
+      Windows, trousseau sous Linux), jamais dans un fichier.
     </p>
     <button type="button" class="link" onclick={() => open(NEW_TOKEN_URL)}>
       <ExternalLink size={14} /> Créer un jeton sur GitHub

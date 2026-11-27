@@ -2,7 +2,7 @@
   Paramètres Gmail : connexion OAuth 2.0 en lecture seule.
   L'ID client et le code secret viennent de la console Google Cloud (voir le guide) ;
   ils partent au Rust, qui ouvre la page de connexion de Google dans le navigateur
-  et range tout dans le Gestionnaire d'identification Windows.
+  et range tout dans le magasin de jetons du système.
 -->
 <script lang="ts">
   import { BookOpen, ExternalLink, LogOut, RefreshCw } from "@lucide/svelte";

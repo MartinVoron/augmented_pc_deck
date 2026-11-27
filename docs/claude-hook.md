@@ -19,7 +19,8 @@ Le script envoie l'événement à un serveur local de l'application :
 
 - il n'écoute que sur `127.0.0.1:47821`, donc aucun autre ordinateur ne peut l'atteindre ;
 - il refuse toute requête qui n'a pas le **jeton** de l'application. Ce jeton est créé
-  au premier lancement et rangé dans le Gestionnaire d'identification Windows.
+  au premier lancement et rangé dans le Gestionnaire d'identification Windows (dans le
+  trousseau du bureau sous Linux).
 
 Le script ne bloque jamais Claude Code : si l'application est fermée, il abandonne en
 silence au bout de 3 secondes au plus.

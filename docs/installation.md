@@ -238,10 +238,10 @@ assignées et vos notifications non lues. Il faut un **jeton personnel** GitHub.
 Le jeton est rangé dans le Gestionnaire d'identification Windows, jamais dans un fichier.
 Quand il expire, la tuile le signale : créez-en un nouveau et recommencez l'étape 3.
 
-Sous Linux, les jetons (GitHub, Gmail, Claude) ne sont pas encore gardés d'un lancement à
-l'autre : il faut se reconnecter après chaque redémarrage de l'application, en attendant
-leur rangement dans le trousseau du bureau
-([#79](https://github.com/MartinVoron/augmented_pc_deck/issues/79)).
+Sous Linux, les jetons (GitHub, Gmail, Claude) sont rangés dans le trousseau du bureau
+(GNOME Keyring, KWallet…), visible par exemple dans l'application « Mots de passe et clés »
+(Seahorse), sous le nom `augmented-pc-deck`. Si l'application dit qu'elle ne peut pas
+enregistrer le jeton, vérifiez qu'un trousseau est installé et déverrouillé.
 
 ## 11. Gmail
 
@@ -293,7 +293,7 @@ Où sont vos données :
 
 - réglages, pages et tuiles : `%APPDATA%\fr.martinvoron.augmented-pc-deck\config.json` ;
 - jetons GitHub, Gmail et Claude : Gestionnaire d'identification Windows, entrées
-  `augmented-pc-deck` ;
+  `augmented-pc-deck` (sous Linux : trousseau du bureau) ;
 - journal des erreurs : `%LOCALAPPDATA%\fr.martinvoron.augmented-pc-deck\logs\`.
 
 Sous Linux :
