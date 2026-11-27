@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::modules::weather::Place;
+
 /// Version actuelle du format du fichier de configuration.
 /// À augmenter à chaque changement de format, en ajoutant une étape dans [`migrate`].
 pub const CURRENT_VERSION: u32 = 1;
@@ -133,6 +135,9 @@ pub struct TileConfig {
     /// Affiche les secondes d'une tuile Horloge.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub show_seconds: bool,
+    /// Ville d'une tuile Météo (Caen si absente).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub location: Option<Place>,
 }
 
 /// Une tâche de la liste.
@@ -196,6 +201,7 @@ impl TileConfig {
             todos: Vec::new(),
             hide_done: false,
             show_seconds: false,
+            location: None,
         }
     }
 }
@@ -340,6 +346,21 @@ mod tests {
         }] } }"#;
         let config = parse(text).unwrap();
         assert!(config.layout.tiles[0].show_seconds);
+        let written = serde_json::to_string(&config).unwrap();
+        assert_eq!(parse(&written).unwrap(), config);
+    }
+
+    #[test]
+    fn weather_tile_keeps_its_city() {
+        let text = r#"{ "layout": { "tiles": [{
+            "id": "weather-1", "kind": "weather", "title": "Météo", "size": "2x1",
+            "location": { "name": "Caen", "latitude": 49.18, "longitude": -0.36, "detail": "Normandie, France" }
+        }] } }"#;
+        let config = parse(text).unwrap();
+        assert_eq!(
+            config.layout.tiles[0].location.as_ref().unwrap().name,
+            "Caen"
+        );
         let written = serde_json::to_string(&config).unwrap();
         assert_eq!(parse(&written).unwrap(), config);
     }
