@@ -38,12 +38,19 @@ tauri-plugin-dialog = "2"
 sysinfo = { version = "0.36.1", default-features = false, features = ["system", "disk"] }
 # Minuteurs : attente de la fin d'un compte à rebours, sans bloquer.
 # GitHub : plusieurs requêtes en parallèle (`join!`).
-tokio = { version = "1", features = ["time", "macros"] }
+# Gmail : petit serveur local qui reçoit la réponse de Google après la connexion.
+tokio = { version = "1", features = ["time", "macros", "net", "io-util", "sync"] }
 # GitHub, Gmail : appels HTTPS (TLS de Windows, sans dépendance de compilation en plus).
-reqwest = { version = "0.13", default-features = false, features = ["json", "native-tls", "http2", "charset"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "form", "native-tls", "http2", "charset"] }
+# Gmail : connexion OAuth 2.0 avec PKCE (aléa, empreinte SHA-256, adresses).
+getrandom = "0.3"
+sha2 = "0.10"
+url = "2"
 
 [dev-dependencies]
 tempfile = "3"
+# Tests des fonctions asynchrones (`#[tokio::test]`).
+tokio = { version = "1", features = ["rt", "macros"] }
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

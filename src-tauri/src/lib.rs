@@ -6,6 +6,7 @@ pub mod notifications;
 pub mod tokens;
 pub mod window;
 
+use modules::gmail::{self, GmailState};
 use modules::music::{self, MusicState};
 use modules::processes::{self, ProcessMonitor};
 use modules::timers::{self, Timers};
@@ -28,6 +29,7 @@ pub fn run() {
         .manage(ProcessMonitor::default())
         .manage(Timers::default())
         .manage(MusicState::default())
+        .manage(GmailState::default())
         .on_window_event(window::on_window_event)
         .invoke_handler(tauri::generate_handler![
             app::app_version,
@@ -57,6 +59,9 @@ pub fn run() {
             github::github_account,
             github::github_disconnect,
             github::github_activity,
+            gmail::gmail_connect,
+            gmail::gmail_account,
+            gmail::gmail_disconnect,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
