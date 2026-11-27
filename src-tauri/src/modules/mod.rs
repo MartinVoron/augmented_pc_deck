@@ -16,3 +16,4 @@ pub mod processes;
 pub mod settings;
 pub mod timers;
 pub mod todos;
+pub mod weather;
