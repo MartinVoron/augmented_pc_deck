@@ -9,7 +9,15 @@ const config: Config = {
   version: 1,
   general: { language: "fr", notificationsEnabled: false },
   window: { alwaysOnTop: false, fullscreen: false },
-  layout: { tiles: [{ id: "timers-1", kind: "timers", title: "Minuteurs", size: "1x1" }] },
+  layout: {
+    pages: [
+      {
+        id: "page-1",
+        name: "Principal",
+        tiles: [{ id: "timers-1", kind: "timers", title: "Minuteurs", size: "1x1" }],
+      },
+    ],
+  },
 };
 
 describe("settings", () => {

@@ -24,7 +24,13 @@ describe("CityDialog", () => {
             general: { language: "fr", notificationsEnabled: true },
             window: { alwaysOnTop: false, fullscreen: false },
             layout: {
-              tiles: [{ id: "weather-1", kind: "weather", title: "Météo", size: "2x1" }],
+              pages: [
+                {
+                  id: "page-1",
+                  name: "Principal",
+                  tiles: [{ id: "weather-1", kind: "weather", title: "Météo", size: "2x1" }],
+                },
+              ],
             },
           });
         case "settings_save":
@@ -51,7 +57,7 @@ describe("CityDialog", () => {
     await fireEvent.click(await screen.findByRole("button", { name: /Bayeux/ }));
 
     await vi.waitFor(() => expect(onclose).toHaveBeenCalled());
-    expect(saved?.layout.tiles[0].location).toEqual(bayeux);
+    expect(saved?.layout.pages[0].tiles[0].location).toEqual(bayeux);
   });
 
   it("dit quand aucune ville n'est trouvée", async () => {

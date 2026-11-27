@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_LAYOUT, type TileConfig } from "./defaultLayout";
-import { addTile, moveTile, removeTile, resizeTile, sanitizeLayout } from "./layout";
+import { DEFAULT_PAGES, type TileConfig } from "./defaultLayout";
+import { addTile, moveTile, removeTile, resizeTile, sanitizePages, sanitizeTiles } from "./layout";
 
 const tiles: TileConfig[] = [
   { id: "a", kind: "timers", title: "A", size: "1x1" },
@@ -17,6 +17,11 @@ describe("disposition de la grille", () => {
 
     expect(twice.map((t) => t.id)).toEqual(["timers-1", "timers-2"]);
     expect(twice[1]).toMatchObject({ kind: "timers", title: "Minuteurs", size: "1x1" });
+  });
+
+  it("garde des identifiants uniques d'une page à l'autre", () => {
+    const other = [{ id: "timers-1" }, { id: "timers-2" }];
+    expect(addTile([], "timers", other)[0].id).toBe("timers-3");
   });
 
   it("supprime une tuile", () => {
@@ -41,9 +46,9 @@ describe("disposition de la grille", () => {
   });
 
   it("ignore les tuiles inconnues lues dans la configuration", () => {
-    const result = sanitizeLayout([
+    const result = sanitizeTiles([
       { id: "a", kind: "timers", title: "A", size: "1x1" },
-      { id: "x", kind: "meteo", title: "Météo", size: "1x1" },
+      { id: "x", kind: "inconnu", title: "Inconnu", size: "1x1" },
       { id: "y", kind: "music", title: "Musique", size: "3x3" },
     ]);
 
@@ -51,6 +56,7 @@ describe("disposition de la grille", () => {
   });
 
   it("utilise la disposition par défaut tant que la configuration n'est pas chargée", () => {
-    expect(sanitizeLayout(undefined)).toBe(DEFAULT_LAYOUT);
+    expect(sanitizePages(undefined)).toBe(DEFAULT_PAGES);
+    expect(sanitizePages([])).toBe(DEFAULT_PAGES);
   });
 });

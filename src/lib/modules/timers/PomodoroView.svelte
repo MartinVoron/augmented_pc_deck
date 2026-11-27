@@ -18,7 +18,7 @@
     type TimerRuns,
   } from ".";
   import type { TileConfig } from "../../grid/defaultLayout";
-  import { updateSettings } from "../settings/state.svelte";
+  import { updateTile } from "../../grid/state";
   import {
     nextPhase,
     PHASE_LABELS,
@@ -99,10 +99,7 @@
     event.preventDefault();
     const next = sanitizePomodoro($state.snapshot(draft));
     editing = false;
-    void updateSettings((config) => {
-      const target = config.layout.tiles.find((t) => t.id === tile.id);
-      if (target) target.pomodoro = next;
-    });
+    void updateTile(tile.id, (target) => (target.pomodoro = next));
   }
 </script>
 

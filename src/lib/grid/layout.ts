@@ -1,4 +1,4 @@
-import { DEFAULT_LAYOUT, type TileConfig, type TileKind } from "./defaultLayout";
+import { DEFAULT_PAGES, type PageConfig, type TileConfig, type TileKind } from "./defaultLayout";
 import { TILE_SPANS, type TileSize } from "./types";
 
 /** Modules qu'on peut placer sur la grille, avec leur nom par défaut. */
@@ -25,14 +25,13 @@ function isTileSize(size: string): size is TileSize {
   return size in TILE_SPANS;
 }
 
+type RawTile = { id: string; kind: string; title: string; size: string };
+
 /**
- * Garde seulement les tuiles valides d'une disposition lue dans la configuration
+ * Garde seulement les tuiles valides d'une liste lue dans la configuration
  * (un module inconnu ou une taille inconnue sont ignorés au lieu de tout casser).
  */
-export function sanitizeLayout(
-  tiles: { id: string; kind: string; title: string; size: string }[] | undefined,
-): TileConfig[] {
-  if (!tiles) return DEFAULT_LAYOUT;
+export function sanitizeTiles(tiles: RawTile[]): TileConfig[] {
   return tiles.flatMap((tile) =>
     isTileKind(tile.kind) && isTileSize(tile.size)
       ? [{ ...tile, kind: tile.kind, size: tile.size }]
@@ -40,11 +39,36 @@ export function sanitizeLayout(
   );
 }
 
-/** Ajoute une tuile 1×1 d'un module à la fin de la grille. */
-export function addTile(tiles: TileConfig[], kind: TileKind): TileConfig[] {
+/** Pages lues dans la configuration ; la disposition par défaut tant qu'elle n'est pas chargée. */
+export function sanitizePages(
+  pages: { id: string; name: string; tiles?: RawTile[] }[] | undefined,
+): PageConfig[] {
+  if (!pages || pages.length === 0) return DEFAULT_PAGES;
+  return pages.map((page) => ({ ...page, tiles: sanitizeTiles(page.tiles ?? []) }));
+}
+
+/** Toutes les tuiles de toutes les pages. */
+export function allTiles(pages: { tiles: { id: string }[] }[]): { id: string }[] {
+  return pages.flatMap((page) => page.tiles);
+}
+
+/** Identifiant libre pour une nouvelle tuile (unique dans toutes les pages). */
+export function newTileId(taken: { id: string }[], kind: TileKind): string {
   let n = 1;
-  while (tiles.some((tile) => tile.id === `${kind}-${n}`)) n++;
-  return [...tiles, { id: `${kind}-${n}`, kind, title: KIND_TITLES[kind], size: "1x1" }];
+  while (taken.some((tile) => tile.id === `${kind}-${n}`)) n++;
+  return `${kind}-${n}`;
+}
+
+/**
+ * Ajoute une tuile 1×1 d'un module à la fin de la grille. `taken` : toutes les tuiles
+ * existantes, pour que l'identifiant reste unique d'une page à l'autre.
+ */
+export function addTile(
+  tiles: TileConfig[],
+  kind: TileKind,
+  taken: { id: string }[] = tiles,
+): TileConfig[] {
+  return [...tiles, { id: newTileId(taken, kind), kind, title: KIND_TITLES[kind], size: "1x1" }];
 }
 
 export function removeTile(tiles: TileConfig[], id: string): TileConfig[] {
@@ -55,13 +79,18 @@ export function resizeTile(tiles: TileConfig[], id: string, size: TileSize): Til
   return tiles.map((tile) => (tile.id === id ? { ...tile, size } : tile));
 }
 
+/** Déplace un élément à une nouvelle position (bornée aux limites de la liste). */
+function move<T extends { id: string }>(list: T[], id: string, toIndex: number): T[] {
+  const from = list.findIndex((item) => item.id === id);
+  if (from === -1) return list;
+  const target = Math.max(0, Math.min(toIndex, list.length - 1));
+  const result = [...list];
+  const [item] = result.splice(from, 1);
+  result.splice(target, 0, item);
+  return result;
+}
+
 /** Déplace une tuile à une nouvelle position (bornée aux limites de la liste). */
 export function moveTile(tiles: TileConfig[], id: string, toIndex: number): TileConfig[] {
-  const from = tiles.findIndex((tile) => tile.id === id);
-  if (from === -1) return tiles;
-  const target = Math.max(0, Math.min(toIndex, tiles.length - 1));
-  const result = [...tiles];
-  const [tile] = result.splice(from, 1);
-  result.splice(target, 0, tile);
-  return result;
+  return move(tiles, id, toIndex);
 }

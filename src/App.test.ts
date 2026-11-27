@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App.svelte";
-import { DEFAULT_LAYOUT } from "./lib/grid/defaultLayout";
+import { DEFAULT_PAGES } from "./lib/grid/defaultLayout";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 const mockedInvoke = vi.mocked(invoke);
@@ -11,7 +11,7 @@ const config = {
   version: 1,
   general: { language: "fr", notificationsEnabled: true },
   window: { alwaysOnTop: false, fullscreen: false },
-  layout: { tiles: DEFAULT_LAYOUT },
+  layout: { pages: DEFAULT_PAGES },
 };
 
 // Faux Rust qui répond normalement à chaque commande.
@@ -29,7 +29,7 @@ describe("App", () => {
     render(App);
     await screen.findByText("Augmented PC Deck 0.1.0");
 
-    for (const tile of DEFAULT_LAYOUT) {
+    for (const tile of DEFAULT_PAGES[0].tiles) {
       expect(screen.getByRole("region", { name: tile.title })).toBeTruthy();
     }
   });

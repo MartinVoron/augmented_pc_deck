@@ -28,6 +28,13 @@ export interface TileSettings {
   location?: Place;
 }
 
+/** Une page de tuiles (un onglet). */
+export interface PageSettings {
+  id: string;
+  name: string;
+  tiles: TileSettings[];
+}
+
 /** Configuration complète de l'application (fichier `config.json`). */
 export interface Config {
   version: number;
@@ -42,7 +49,8 @@ export interface Config {
     fullscreen: boolean;
   };
   layout: {
-    tiles: TileSettings[];
+    /** Pages de tuiles, dans l'ordre des onglets. */
+    pages: PageSettings[];
   };
   /** Réglages du module GitHub (absents d'une ancienne configuration). */
   github?: {
