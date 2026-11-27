@@ -1,7 +1,7 @@
 # Guide d'installation et de mise en place
 
-Ce guide explique, pas à pas, comment installer Augmented PC Deck sous Windows puis
-régler chaque module. Comptez 5 minutes pour l'installation et les modules simples, et
+Ce guide explique, pas à pas, comment installer Augmented PC Deck sous Windows ou sous
+Linux, puis régler chaque module. Comptez 5 minutes pour l'installation et les modules simples, et
 environ 15 minutes de plus si vous voulez GitHub, Gmail et Claude Code.
 
 Sommaire :
@@ -39,6 +39,33 @@ Il faut Windows 10 ou 11 (64 bits).
    Si WebView2 manque (rare sur Windows 10 et 11), il l'installe tout seul.
 6. À la fin, lancez l'application, ou retrouvez-la plus tard dans le **menu Démarrer** :
    « Augmented PC Deck ».
+
+### Sous Linux
+
+Il faut une distribution 64 bits récente (par exemple Ubuntu 22.04 ou plus, Debian 12,
+Fedora 38). Dans la partie **Assets** de la
+[dernière version](https://github.com/MartinVoron/augmented_pc_deck/releases/latest) :
+
+- **Debian, Ubuntu, Linux Mint, Pop!_OS** : téléchargez le fichier qui finit par
+  **`_amd64.deb`**, puis installez-le depuis le dossier de téléchargement :
+
+  ```sh
+  sudo apt install ./Augmented.PC.Deck_0.2.0_amd64.deb
+  ```
+
+  (remplacez le numéro par celui du fichier). L'application apparaît dans le menu des
+  applications.
+- **Autres distributions** (Fedora, Arch…) : téléchargez le fichier **`.AppImage`**,
+  rendez-le exécutable puis lancez-le :
+
+  ```sh
+  chmod +x Augmented.PC.Deck_0.2.0_amd64.AppImage
+  ./Augmented.PC.Deck_0.2.0_amd64.AppImage
+  ```
+
+La version Linux est récente : quelques modules sont encore en cours de portage. Chaque
+section ci-dessous le précise, et l'avancement est suivi dans
+l'[issue #77](https://github.com/MartinVoron/augmented_pc_deck/issues/77).
 
 ## 2. Premiers pas : pages, tuiles et paramètres
 
@@ -81,6 +108,10 @@ Le rond rouge **cache** l'application dans la zone de notification (à côté de
 de Windows) au lieu de la quitter, pour que minuteurs et notifications continuent. Pour
 la quitter vraiment : clic droit sur son icône, puis **Quitter**.
 
+Sous Linux, l'icône est dans la barre du haut ou du bas selon le bureau, et un clic ouvre
+directement son menu (Afficher, Masquer, Quitter). Sous GNOME (Ubuntu l'inclut déjà), il
+faut l'extension « AppIndicator » pour voir l'icône.
+
 ## 3. Réglages généraux
 
 **Paramètres > Général** :
@@ -93,6 +124,11 @@ la quitter vraiment : clic droit sur son icône, puis **Quitter**.
 - **Afficher les notifications Windows**, et **Envoyer une notification d'essai** pour
   vérifier qu'elles arrivent. Si rien ne s'affiche, regardez dans les paramètres de
   Windows : Système > Notifications > Augmented PC Deck.
+
+Sous Linux, le lancement au démarrage ajoute un fichier dans `~/.config/autostart`, et les
+notifications s'affichent dans le centre de notifications du bureau. Leurs sons ne sont pas
+encore adaptés à Linux
+([#82](https://github.com/MartinVoron/augmented_pc_deck/issues/82)).
 
 ## 4. Raccourcis (lanceur)
 
@@ -113,6 +149,10 @@ La tuile **Raccourcis** lance en un clic un programme, un fichier, un dossier ou
 
 ![Fenêtre de modification d'un raccourci](images/raccourcis-modifier.png)
 
+Sous Linux, les adresses, fichiers et dossiers s'ouvrent avec l'application associée. Le
+lancement d'un programme ou d'un fichier `.desktop` (menu des applications) arrive bientôt
+([#83](https://github.com/MartinVoron/augmented_pc_deck/issues/83)).
+
 Chaque tuile Raccourcis a sa propre liste : vous pouvez en mettre une par page (outils
 de travail, jeux, dossiers…). Si une cible a été déplacée ou supprimée, la tuile le dit
 clairement au clic.
@@ -124,6 +164,9 @@ mis à jour toutes les 2 secondes.
 
 **Voir les processus** ouvre la liste des programmes en cours, triable et filtrable par
 nom. **Arrêter** termine un programme bloqué (une confirmation est demandée).
+
+Sous Linux, la liste des disques peut encore montrer des disques virtuels, par exemple
+ceux des paquets Snap ([#84](https://github.com/MartinVoron/augmented_pc_deck/issues/84)).
 
 ![Liste des processus avec filtre et bouton Arrêter](images/processus-liste.png)
 
@@ -159,6 +202,10 @@ Elle marche avec toute application qui s'affiche dans le contrôle du volume de 
 Spotify, Deezer, YouTube dans Edge ou Chrome, le lecteur multimédia de
 Windows, etc. Un bouton grisé veut dire que l'application ne le propose pas.
 
+Sous Linux, la tuile n'affiche pas encore la musique en cours : la lecture par MPRIS
+(Spotify, Firefox, VLC…) arrive bientôt
+([#80](https://github.com/MartinVoron/augmented_pc_deck/issues/80)).
+
 ![Tuile Musique avec pochette et boutons de lecture](images/musique-controles.png)
 
 ## 9. Horloge et météo
@@ -190,6 +237,11 @@ assignées et vos notifications non lues. Il faut un **jeton personnel** GitHub.
 
 Le jeton est rangé dans le Gestionnaire d'identification Windows, jamais dans un fichier.
 Quand il expire, la tuile le signale : créez-en un nouveau et recommencez l'étape 3.
+
+Sous Linux, les jetons (GitHub, Gmail, Claude) ne sont pas encore gardés d'un lancement à
+l'autre : il faut se reconnecter après chaque redémarrage de l'application, en attendant
+leur rangement dans le trousseau du bureau
+([#79](https://github.com/MartinVoron/augmented_pc_deck/issues/79)).
 
 ## 11. Gmail
 
@@ -224,6 +276,9 @@ est ici : **[Recevoir les notifications de Claude Code](claude-hook.md)**. En r�
 
 ![Paramètres Claude : serveur local, script et bloc à copier](images/claude-parametres.png)
 
+Sous Linux, ce module n'est pas encore disponible : le script créé est pour Windows
+([#81](https://github.com/MartinVoron/augmented_pc_deck/issues/81)).
+
 ## 13. Mettre à jour, désinstaller
 
 - **Mettre à jour** : téléchargez la nouvelle version (étape 1) et installez-la
@@ -241,10 +296,20 @@ Où sont vos données :
   `augmented-pc-deck` ;
 - journal des erreurs : `%LOCALAPPDATA%\fr.martinvoron.augmented-pc-deck\logs\`.
 
+Sous Linux :
+
+- **Mettre à jour** : installez le nouveau `.deb` de la même façon, ou remplacez
+  l'ancien `.AppImage` par le nouveau.
+- **Désinstaller** : `sudo apt remove augmented-pc-deck` pour le `.deb`, ou supprimez le
+  fichier `.AppImage`. Désactivez d'abord **Lancer au démarrage**.
+- Réglages : `~/.config/fr.martinvoron.augmented-pc-deck/config.json` ; journal :
+  `~/.local/share/fr.martinvoron.augmented-pc-deck/logs/`.
+
 ## 14. En cas de problème
 
 - **Rien ne se passe au lancement** : l'application est peut-être déjà ouverte et cachée.
   Cliquez sur son icône dans la zone de notification (flèche ^ à côté de l'horloge).
+  Sous Linux, si l'icône n'apparaît pas, voir la fin de la section 2.
 - **Pas de notifications** : Paramètres > Général > Envoyer une notification d'essai, puis
   vérifiez les réglages de notifications de Windows et le mode Ne pas déranger.
 - **La tuile GitHub ou Gmail dit de se reconnecter** : le jeton a expiré ou a été retiré ;
