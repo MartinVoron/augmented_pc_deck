@@ -5,6 +5,7 @@ pub mod notifications;
 pub mod tokens;
 pub mod window;
 
+use modules::music::{self, MusicState};
 use modules::processes::{self, ProcessMonitor};
 use modules::timers::{self, Timers};
 use modules::{app, launcher, settings};
@@ -25,6 +26,7 @@ pub fn run() {
         .manage(TokenStore::system())
         .manage(ProcessMonitor::default())
         .manage(Timers::default())
+        .manage(MusicState::default())
         .on_window_event(window::on_window_event)
         .invoke_handler(tauri::generate_handler![
             app::app_version,
@@ -48,6 +50,7 @@ pub fn run() {
             timers::timers_start,
             timers::timers_pause,
             timers::timers_reset,
+            music::music_now_playing,
         ])
         .setup(|app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));

@@ -45,7 +45,11 @@ tempfile = "3"
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
 # Lanceur : extraction des icônes par le shell de Windows.
+# Musique : sessions média de Windows (morceau en cours, lecture).
 windows = { version = "0.62", features = [
+  "Foundation",
+  "Media_Control",
+  "Storage_Streams",
   "Win32_Foundation",
   "Win32_Graphics_Gdi",
   "Win32_System_Com",
