@@ -11,6 +11,7 @@
   import MusicTile from "../modules/music/MusicTile.svelte";
   import ProcessesTile from "../modules/processes/ProcessesTile.svelte";
   import TimersTile from "../modules/timers/TimersTile.svelte";
+  import WeatherTile from "../modules/weather/WeatherTile.svelte";
   import TodosTile from "../modules/todos/TodosTile.svelte";
 
   let { tile }: { tile: TileConfig } = $props();
@@ -34,6 +35,8 @@
   <ClaudeTile {tile} />
 {:else if tile.kind === "clock"}
   <ClockTile {tile} />
+{:else if tile.kind === "weather"}
+  <WeatherTile {tile} />
 {:else}
   <p class="soon">Bientôt disponible</p>
 {/if}
