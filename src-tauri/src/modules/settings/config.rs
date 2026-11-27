@@ -19,6 +19,7 @@ pub struct Config {
     pub window: WindowSettings,
     pub layout: Layout,
     pub github: GithubSettings,
+    pub gmail: GmailSettings,
 }
 
 impl Default for Config {
@@ -29,6 +30,7 @@ impl Default for Config {
             window: WindowSettings::default(),
             layout: Layout::default(),
             github: GithubSettings::default(),
+            gmail: GmailSettings::default(),
         }
     }
 }
@@ -74,6 +76,25 @@ pub struct GithubSettings {
 impl Default for GithubSettings {
     fn default() -> Self {
         Self { refresh_minutes: 5 }
+    }
+}
+
+/// Réglages du module Gmail.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct GmailSettings {
+    /// Intervalle de rafraîchissement des e-mails non lus, en minutes.
+    pub refresh_minutes: u32,
+    /// Notification Windows pour chaque nouveau message.
+    pub notify_new: bool,
+}
+
+impl Default for GmailSettings {
+    fn default() -> Self {
+        Self {
+            refresh_minutes: 2,
+            notify_new: true,
+        }
     }
 }
 

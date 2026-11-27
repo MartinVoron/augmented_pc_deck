@@ -44,6 +44,13 @@ export interface Config {
     /** Intervalle de rafraîchissement de l'activité, en minutes. */
     refreshMinutes: number;
   };
+  /** Réglages du module Gmail (absents d'une ancienne configuration). */
+  gmail?: {
+    /** Intervalle de rafraîchissement des non lus, en minutes. */
+    refreshMinutes: number;
+    /** Notification Windows pour chaque nouveau message. */
+    notifyNew: boolean;
+  };
 }
 
 /** Lit la configuration actuelle. */
