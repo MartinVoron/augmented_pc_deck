@@ -4,7 +4,7 @@
 [![Téléchargements](https://img.shields.io/github/downloads/MartinVoron/augmented_pc_deck/total?label=t%C3%A9l%C3%A9chargements)](https://github.com/MartinVoron/augmented_pc_deck/releases)
 [![CI](https://github.com/MartinVoron/augmented_pc_deck/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinVoron/augmented_pc_deck/actions/workflows/ci.yml)
 
-**[⬇ Télécharger l'installateur Windows](https://github.com/MartinVoron/augmented_pc_deck/releases/latest)**
+**[⬇ Télécharger pour Windows ou Linux](https://github.com/MartinVoron/augmented_pc_deck/releases/latest)**
 · [Guide d'installation et de mise en place](docs/installation.md)
 
 Tableau de bord de bureau, en local, pour Windows, façon Stream Deck : raccourcis
@@ -26,6 +26,16 @@ Pour simplement utiliser l'application, pas besoin de la compiler :
    n'est pas signé) : **Informations complémentaires**, puis **Exécuter quand même**.
 3. L'application apparaît dans le menu Démarrer (« Augmented PC Deck »).
 
+**Sous Linux** (64 bits), dans la même page :
+
+- Debian, Ubuntu, Linux Mint : télécharger le `.deb`, puis
+  `sudo apt install ./Augmented.PC.Deck_X.Y.Z_amd64.deb` ;
+- autres distributions : télécharger le `.AppImage`, le rendre exécutable
+  (`chmod +x`), puis le lancer.
+
+La version Linux est récente : quelques modules sont encore en cours de portage
+(voir [le guide](docs/installation.md#sous-linux) et l'issue #77).
+
 Le **[guide d'installation et de mise en place](docs/installation.md)** explique la suite,
 module par module : raccourcis, minuteurs, tâches, musique, météo, pages, GitHub, Gmail et
 notifications de Claude Code, ainsi que la mise à jour et la désinstallation.
@@ -44,6 +54,14 @@ Une nouvelle version est publiée à chaque fusion de la PR `version/vX.Y.Z` (vo
    gardant la chaîne `stable-msvc` proposée par défaut.
 4. **Node.js** (version 20.19 ou plus, la version LTS conseillée) : [nodejs.org](https://nodejs.org/fr).
 
+**Sous Linux** (Debian, Ubuntu), Rust et Node.js comme ci-dessus, plus les bibliothèques
+de Tauri :
+
+```sh
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+  librsvg2-dev libdbus-1-dev libssl-dev build-essential
+```
+
 Le détail officiel est sur la page [Prérequis de Tauri](https://v2.tauri.app/start/prerequisites/).
 
 ## Démarrer
@@ -60,7 +78,7 @@ npm install
 | Commande              | Ce qu'elle fait                                                  |
 |-----------------------|------------------------------------------------------------------|
 | `npm run tauri dev`   | Lance l'application en mode développement (rechargement à chaud) |
-| `npm run tauri build` | Produit l'exécutable et les installateurs Windows                |
+| `npm run tauri build` | Produit l'exécutable et les installateurs (Windows ou Linux)     |
 | `npm run check`       | Vérifie les types TypeScript et Svelte                           |
 | `npm test`            | Lance tous les tests : interface (Vitest) puis Rust (`cargo test`) |
 | `npm run lint`        | Vérifie le style : ESLint, Prettier, `cargo fmt` et `cargo clippy` |
@@ -70,7 +88,9 @@ npm install
 Après `npm run tauri build`, on trouve :
 
 - l'exécutable : `src-tauri/target/release/augmented-pc-deck.exe` ;
-- les installateurs : `src-tauri/target/release/bundle/nsis/` et `bundle/msi/`.
+- les installateurs : `src-tauri/target/release/bundle/nsis/` et `bundle/msi/` ;
+- sous Linux : `bundle/deb/` et `bundle/appimage/` (réglages propres à Linux dans
+  `src-tauri/tauri.linux.conf.json`).
 
 La première compilation Rust prend quelques minutes, les suivantes sont bien plus rapides.
 
@@ -159,11 +179,12 @@ dans le journal et la tuile affiche un message clair avec un bouton « Réessaye
 
 ## Intégration continue
 
-À chaque PR, le workflow [CI](.github/workflows/ci.yml) vérifie le projet sur une machine
-Windows : `npm run lint`, `npm run check`, les tests de l'interface et du Rust, puis la
-compilation de l'application avec ses installateurs. Il échoue dès qu'une étape échoue.
-Les installateurs produits sont joints à la vérification (artefact `installateurs-windows`,
-gardé 14 jours) : on peut les essayer avant de fusionner. Les dépendances npm et la
+À chaque PR, le workflow [CI](.github/workflows/ci.yml) vérifie le projet sous Windows et
+sous Linux (Ubuntu 22.04) : `npm run lint`, `npm run check`, les tests de l'interface et
+du Rust, puis la compilation de l'application avec ses installateurs. Il échoue dès qu'une
+étape échoue. Les installateurs produits sont joints à la vérification (artefacts
+`installateurs-windows` et `paquets-linux`, gardés 14 jours) : on peut les essayer avant
+de fusionner. Les dépendances npm et la
 compilation Rust sont mises en cache pour aller plus vite.
 
 ## Contribuer
