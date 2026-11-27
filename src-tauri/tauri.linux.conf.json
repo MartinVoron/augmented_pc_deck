@@ -5,8 +5,7 @@
     "shortDescription": "Tableau de bord de bureau façon Stream Deck",
     "linux": {
       "deb": {
-        "section": "utils",
-        "depends": ["libayatana-appindicator3-1"]
+        "section": "utils"
       }
     }
   }
