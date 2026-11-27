@@ -37,7 +37,8 @@ tauri-plugin-dialog = "2"
 # Processus : usage du processeur, de la mémoire et des disques.
 sysinfo = { version = "0.36.1", default-features = false, features = ["system", "disk"] }
 # Minuteurs : attente de la fin d'un compte à rebours, sans bloquer.
-tokio = { version = "1", features = ["time"] }
+# GitHub : plusieurs requêtes en parallèle (`join!`).
+tokio = { version = "1", features = ["time", "macros"] }
 # GitHub, Gmail : appels HTTPS (TLS de Windows, sans dépendance de compilation en plus).
 reqwest = { version = "0.13", default-features = false, features = ["json", "native-tls", "http2", "charset"] }
 
