@@ -42,7 +42,7 @@ function fakeBackend(command: string, args?: Record<string, unknown>): Promise<u
 
 describe("SettingsScreen", () => {
   beforeEach(async () => {
-    tokens = { github: true, gmail: false, claude: false };
+    tokens = { github: false, gmail: true, claude: false };
     mockedInvoke.mockReset();
     mockedInvoke.mockImplementation((command, args) =>
       fakeBackend(command, args as Record<string, unknown>),
@@ -91,12 +91,12 @@ describe("SettingsScreen", () => {
   it("supprime un jeton après confirmation", async () => {
     render(SettingsScreen, { onclose: () => {} });
 
-    await fireEvent.click(screen.getByRole("button", { name: "GitHub" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Gmail" }));
     await fireEvent.click(await screen.findByRole("button", { name: "Supprimer le jeton" }));
     await fireEvent.click(screen.getByRole("button", { name: "Confirmer la suppression" }));
 
-    expect(mockedInvoke).toHaveBeenCalledWith("tokens_delete", { kind: "github" });
-    expect(await screen.findByText("Aucun jeton GitHub enregistré.")).toBeTruthy();
+    expect(mockedInvoke).toHaveBeenCalledWith("tokens_delete", { kind: "gmail" });
+    expect(await screen.findByText("Aucun jeton Gmail enregistré.")).toBeTruthy();
   });
 
   it("indique qu'un module n'a pas encore de réglage", async () => {
