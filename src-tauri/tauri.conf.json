@@ -28,12 +28,29 @@
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
+    "publisher": "Martin Voron",
+    "copyright": "© 2026 Martin Voron. Licence MIT.",
+    "homepage": "https://github.com/MartinVoron/augmented_pc_deck",
+    "license": "MIT",
+    "category": "Productivity",
+    "shortDescription": "Tableau de bord de bureau pour Windows, façon Stream Deck",
+    "longDescription": "Raccourcis d'applications, gestionnaire de tâches, minuteurs, liste de tâches, musique en cours, GitHub, Gmail et notifications de Claude Code, dans une seule fenêtre.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["French"],
+        "installerIcon": "icons/icon.ico"
+      },
+      "wix": {
+        "language": "fr-FR"
+      }
+    }
   }
 }
