@@ -266,7 +266,7 @@
     cursor: pointer;
   }
 
-  .actions > button.danger {
+  .actions > button.danger:not(.icon-button) {
     border-color: var(--color-danger);
     color: var(--color-danger);
   }
