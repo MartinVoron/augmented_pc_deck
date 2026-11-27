@@ -3,6 +3,7 @@
 -->
 <script lang="ts">
   import type { TileConfig } from "../grid/defaultLayout";
+  import GithubTile from "../modules/github/GithubTile.svelte";
   import LauncherTile from "../modules/launcher/LauncherTile.svelte";
   import MusicTile from "../modules/music/MusicTile.svelte";
   import ProcessesTile from "../modules/processes/ProcessesTile.svelte";
@@ -22,6 +23,8 @@
   <TodosTile {tile} />
 {:else if tile.kind === "music"}
   <MusicTile {tile} />
+{:else if tile.kind === "github"}
+  <GithubTile {tile} />
 {:else}
   <p class="soon">Bientôt disponible</p>
 {/if}
