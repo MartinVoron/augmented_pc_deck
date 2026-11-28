@@ -4,6 +4,15 @@ import { call } from "../tauri";
 /** Bord de l'écran où la fenêtre est ancrée (`none` : fenêtre normale). */
 export type DockEdge = "none" | "top" | "bottom" | "left" | "right";
 
+/** Nom de chaque bord, pour les paramètres. */
+export const DOCK_EDGE_LABELS: Record<DockEdge, string> = {
+  none: "Non, fenêtre normale",
+  top: "En haut",
+  bottom: "En bas",
+  left: "À gauche",
+  right: "À droite",
+};
+
 /** Apparence de l'encoche repliée : noire avec le logo, ou entièrement noire. */
 export type NotchStyle = "logo" | "black";
 
