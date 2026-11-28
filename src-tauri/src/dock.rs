@@ -517,7 +517,14 @@ fn recreate_window<R: Runtime>(app: &AppHandle<R>, settings: WindowSettings) {
                 Ok(_) => {
                     log::info!("fenêtre principale recréée");
                     app.state::<DockState>().lock().fresh_window = true;
-                    apply(&app, &settings);
+                    // Comme au démarrage, depuis le fil principal : la fenêtre doit
+                    // passer en layer shell avant toute autre opération sur elle.
+                    let handle = app.clone();
+                    if let Err(e) = app.run_on_main_thread(move || {
+                        apply(&handle, &settings);
+                    }) {
+                        log::error!("impossible d'ancrer la nouvelle fenêtre : {e}");
+                    }
                 }
                 Err(e) => log::error!("impossible de recréer la fenêtre principale : {e}"),
             }
@@ -644,7 +651,15 @@ fn screen_of<R: Runtime>(window: &WebviewWindow<R>) -> Option<(Rect, f64)> {
         .current_monitor()
         .ok()
         .flatten()
-        .or_else(|| window.primary_monitor().ok().flatten())?;
+        .or_else(|| window.primary_monitor().ok().flatten())
+        // Sous Wayland, une fenêtre pas encore affichée n'a pas d'écran et il n'y a
+        // pas d'écran principal : le premier écran connu fait l'affaire.
+        .or_else(|| {
+            window
+                .available_monitors()
+                .ok()
+                .and_then(|monitors| monitors.into_iter().next())
+        })?;
     let area = monitor.work_area();
     let work = Rect {
         x: area.position.x,
@@ -682,9 +697,18 @@ fn attach_layer<R: Runtime>(window: &WebviewWindow<R>, edge: DockEdge) {
     let target = window.clone();
     // GTK ne s'utilise que depuis le fil principal.
     let result = window.run_on_main_thread(move || {
-        let attached = target
-            .gtk_window()
-            .is_ok_and(|gtk_window| crate::layer::attach(&gtk_window, edge));
+        let gtk_window = target.gtk_window().ok();
+        let attached = gtk_window.as_ref().is_some_and(|gtk_window| {
+            let fresh = !crate::layer::is_attached(gtk_window);
+            let attached = crate::layer::attach(gtk_window, edge);
+            if attached && fresh {
+                let app = target.app_handle().clone();
+                crate::layer::watch_pointer(gtk_window, move |inside| {
+                    app.state::<DockState>().lock().pointer_inside = inside;
+                });
+            }
+            attached
+        });
         if !attached {
             log::warn!("le bureau ne permet pas de coller l'encoche au bord de l'écran");
         }
@@ -762,7 +786,31 @@ fn set_rect<R: Runtime>(window: &WebviewWindow<R>, rect: Rect) {
     if let Err(e) = window.set_size(PhysicalSize::new(rect.width, rect.height)) {
         log::warn!("impossible de redimensionner la fenêtre ancrée : {e}");
     }
+    resize_layer(window, rect);
 }
+
+/// Sous Wayland avec le layer shell, la taille passe aussi par `layer::resize`.
+#[cfg(target_os = "linux")]
+fn resize_layer<R: Runtime>(window: &WebviewWindow<R>, rect: Rect) {
+    if !crate::display::native_wayland() {
+        return;
+    }
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let logical = |px: u32| (f64::from(px) / scale).round() as i32;
+    let (width, height) = (logical(rect.width), logical(rect.height));
+    let target = window.clone();
+    let result = window.run_on_main_thread(move || {
+        if let Ok(gtk_window) = target.gtk_window() {
+            crate::layer::resize(&gtk_window, width, height);
+        }
+    });
+    if let Err(e) = result {
+        log::warn!("impossible de redimensionner l'encoche : {e}");
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn resize_layer<R: Runtime>(_window: &WebviewWindow<R>, _rect: Rect) {}
 
 fn window_rect<R: Runtime>(window: &WebviewWindow<R>) -> Option<Rect> {
     let position = window.outer_position().ok()?;
