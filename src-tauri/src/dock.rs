@@ -317,6 +317,8 @@ struct Inner {
     started: Option<Instant>,
     /// Le bureau a refusé de placer l'encoche (voir [`Placement`]).
     refused: bool,
+    /// La fenêtre principale vient d'être recréée et n'est pas encore affichée.
+    fresh_window: bool,
 }
 
 /// Glisser de la fenêtre normale en cours.
@@ -394,37 +396,32 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     };
     let state = app.state::<DockState>();
     let next = settings.dock;
-    let (previous, starting) = {
+    let (previous, fresh) = {
         let mut inner = state.lock();
-        let starting = inner.started.is_none();
+        // Fenêtre jamais affichée : au démarrage, ou recréée (voir `recreate_window`).
+        let fresh = inner.started.is_none() || std::mem::take(&mut inner.fresh_window);
         inner.started.get_or_insert_with(Instant::now);
         inner.dock_on_drag = settings.dock_on_drag;
         if inner.edge != next {
             inner.drag = None;
             inner.ignore_moves_until = Some(Instant::now() + Duration::from_millis(SELF_MOVE_MS));
         }
-        (inner.edge, starting)
+        (inner.edge, fresh)
     };
     if previous == next {
+        if fresh && next == DockEdge::None {
+            let _ = window.show();
+        }
         return next != DockEdge::None;
     }
 
-    // Sous Wayland, seule une fenêtre jamais affichée peut se coller au bord : pour
-    // l'ancrer en cours de route, l'application redémarre (réglage déjà enregistré).
-    if previous == DockEdge::None
-        && next != DockEdge::None
-        && crate::display::native_wayland()
-        && !starting
-    {
-        log::info!("fenêtre ancrée au bord de l'écran : redémarrage de l'application");
-        app.restart();
-    }
-    if next == DockEdge::None && crate::display::native_wayland() {
-        // Une fenêtre collée par le layer shell ne redevient pas une fenêtre
-        // ordinaire : l'application redémarre, en fenêtre normale (réglage déjà
-        // enregistré).
-        log::info!("fenêtre détachée du bord de l'écran : redémarrage de l'application");
-        app.restart();
+    // Sous Wayland, seule une fenêtre jamais affichée peut se coller au bord, et
+    // une fenêtre collée ne redevient pas ordinaire : pour ancrer ou détacher en
+    // cours de route, la fenêtre est remplacée par une neuve.
+    let crosses = (previous == DockEdge::None) != (next == DockEdge::None);
+    if crosses && crate::display::native_wayland() && !fresh {
+        recreate_window(app, settings.clone());
+        return next != DockEdge::None;
     }
     if next == DockEdge::None {
         let restore = {
@@ -438,6 +435,9 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
         let restore = restore.map(|r| keep_visible(&window, r, screen));
         let position = leave_dock(&window, restore, screen);
         state.lock().settled = position;
+        if fresh {
+            let _ = window.show();
+        }
         log::info!("fenêtre détachée du bord de l'écran");
         emit(app, state.lock().status());
         return false;
@@ -474,6 +474,52 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     log::info!("fenêtre ancrée au bord {next:?} de l'écran");
     emit(app, status);
     true
+}
+
+/// Remplace la fenêtre principale par une neuve, masquée, puis applique `settings`
+/// à celle-ci (sous Wayland, pour l'ancrer par le layer shell ou la détacher).
+/// Fait dans un fil à part : la fermeture de l'ancienne fenêtre passe par le fil
+/// principal, qu'il ne faut pas bloquer.
+fn recreate_window<R: Runtime>(app: &AppHandle<R>, settings: WindowSettings) {
+    let app = app.clone();
+    let spawned = thread::Builder::new()
+        .name("nouvelle-fenetre".into())
+        .spawn(move || {
+            let Some(config) = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|w| w.label == MAIN)
+                .cloned()
+            else {
+                log::error!("configuration de la fenêtre principale introuvable");
+                return;
+            };
+            if let Some(old) = app.get_webview_window(MAIN) {
+                let _ = old.destroy();
+            }
+            // Le nom de la fenêtre n'est libre qu'une fois l'ancienne fermée.
+            for _ in 0..50 {
+                if app.get_webview_window(MAIN).is_none() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(20));
+            }
+            match tauri::WebviewWindowBuilder::from_config(&app, &config)
+                .and_then(tauri::WebviewWindowBuilder::build)
+            {
+                Ok(_) => {
+                    log::info!("fenêtre principale recréée");
+                    app.state::<DockState>().lock().fresh_window = true;
+                    apply(&app, &settings);
+                }
+                Err(e) => log::error!("impossible de recréer la fenêtre principale : {e}"),
+            }
+        });
+    if let Err(e) = spawned {
+        log::error!("impossible de recréer la fenêtre principale : {e}");
+    }
 }
 
 /// Retient la taille et la position de la fenêtre normale, sans l'agrandissement.
