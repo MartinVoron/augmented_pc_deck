@@ -45,6 +45,7 @@ pub fn run() {
             window::window_autostart_get,
             dock::dock_status,
             dock::dock_set_panel,
+            dock::dock_set_notch,
             window::window_autostart_set,
             tokens::tokens_status,
             tokens::tokens_set,

@@ -32,6 +32,9 @@ pub const EVENT: &str = "dock-state";
 
 /// Taille de l'encoche en pixels logiques : longueur le long du bord, puis profondeur.
 pub const NOTCH_LENGTH: f64 = 180.0;
+/// Longueurs permises pour l'encoche repliée, quand l'interface l'élargit pour une
+/// activité en direct (morceau en cours, minuteur).
+const NOTCH_LENGTH_RANGE: (f64, f64) = (120.0, 480.0);
 pub const NOTCH_DEPTH: f64 = 32.0;
 /// Taille du panneau ouvert tant que l'interface n'a pas donné la sienne.
 const DEFAULT_PANEL: (f64, f64) = (640.0, 360.0);
@@ -125,10 +128,10 @@ pub fn edge_at(monitor: Rect, x: f64, y: f64, margin: f64) -> DockEdge {
         .map_or(DockEdge::None, |(edge, _)| edge)
 }
 
-/// Taille de l'encoche en pixels physiques : couchée sur les bords haut et bas,
-/// debout sur les bords gauche et droit.
-pub fn notch_size(edge: DockEdge, scale: f64) -> (u32, u32) {
-    let length = to_physical(NOTCH_LENGTH, scale);
+/// Taille de l'encoche en pixels physiques, pour une longueur `length` en pixels
+/// logiques : couchée sur les bords haut et bas, debout sur les bords gauche et droit.
+pub fn notch_size(edge: DockEdge, length: f64, scale: f64) -> (u32, u32) {
+    let length = to_physical(length, scale);
     let depth = to_physical(NOTCH_DEPTH, scale);
     match edge {
         DockEdge::Left | DockEdge::Right => (depth, length),
@@ -199,6 +202,8 @@ struct Inner {
     expanded: bool,
     /// Taille du panneau ouvert demandée par l'interface, en pixels logiques.
     panel: Option<(f64, f64)>,
+    /// Longueur de l'encoche repliée demandée par l'interface, en pixels logiques.
+    notch_length: Option<f64>,
     /// Zone de travail de l'écran où la fenêtre est ancrée, et son échelle.
     screen: Option<(Rect, f64)>,
     restore: Option<Restore>,
@@ -240,7 +245,7 @@ impl Inner {
             let (w, h) = self.panel.unwrap_or(DEFAULT_PANEL);
             (to_physical(w, scale), to_physical(h, scale))
         } else {
-            notch_size(self.edge, scale)
+            notch_size(self.edge, self.notch_length.unwrap_or(NOTCH_LENGTH), scale)
         };
         Some(fit(work, self.edge, width, height))
     }
@@ -689,6 +694,35 @@ pub fn dock_set_panel<R: Runtime>(
     Ok(())
 }
 
+/// Longueur de l'encoche repliée, en pixels logiques : l'interface l'allonge quand
+/// elle montre une activité en direct, et la remet à `NOTCH_LENGTH` ensuite.
+#[tauri::command]
+pub fn dock_set_notch<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, DockState>,
+    length: f64,
+) -> AppResult<()> {
+    if !length.is_finite() {
+        return Err(AppError::Other(format!(
+            "longueur d'encoche invalide : {length}"
+        )));
+    }
+    let length = length.clamp(NOTCH_LENGTH_RANGE.0, NOTCH_LENGTH_RANGE.1);
+    let target = {
+        let mut inner = state.lock();
+        inner.notch_length = Some(length);
+        if inner.expanded {
+            None
+        } else {
+            inner.target()
+        }
+    };
+    if let (Some(window), Some(rect)) = (app.get_webview_window(MAIN), target) {
+        set_rect(&window, rect);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -771,9 +805,11 @@ mod tests {
 
     #[test]
     fn notch_size_follows_the_edge_and_the_scale() {
-        assert_eq!(notch_size(DockEdge::Top, 1.0), (180, 32));
-        assert_eq!(notch_size(DockEdge::Bottom, 1.5), (270, 48));
-        assert_eq!(notch_size(DockEdge::Right, 1.25), (40, 225));
+        assert_eq!(notch_size(DockEdge::Top, NOTCH_LENGTH, 1.0), (180, 32));
+        assert_eq!(notch_size(DockEdge::Bottom, NOTCH_LENGTH, 1.5), (270, 48));
+        assert_eq!(notch_size(DockEdge::Right, NOTCH_LENGTH, 1.25), (40, 225));
+        // Encoche allongée pour une activité en direct.
+        assert_eq!(notch_size(DockEdge::Top, 300.0, 1.0), (300, 32));
     }
 
     #[test]
@@ -867,6 +903,8 @@ mod tests {
             ..Inner::default()
         };
         assert_eq!(inner.target(), Some(fit(SCREEN, DockEdge::Top, 180, 32)));
+        inner.notch_length = Some(300.0);
+        assert_eq!(inner.target(), Some(fit(SCREEN, DockEdge::Top, 300, 32)));
         inner.expanded = true;
         assert_eq!(inner.target(), Some(fit(SCREEN, DockEdge::Top, 640, 360)));
         inner.panel = Some((900.0, 320.0));
