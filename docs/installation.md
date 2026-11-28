@@ -171,8 +171,9 @@ mis à jour toutes les 2 secondes.
 **Voir les processus** ouvre la liste des programmes en cours, triable et filtrable par
 nom. **Arrêter** termine un programme bloqué (une confirmation est demandée).
 
-Sous Linux, la liste des disques peut encore montrer des disques virtuels, par exemple
-ceux des paquets Snap ([#84](https://github.com/MartinVoron/augmented_pc_deck/issues/84)).
+Sous Linux, les disques sont nommés par leur point de montage (`/`, `/home`, une clé USB
+dans `/media/…`) ; les disques virtuels (paquets Snap, mémoire, `/boot`) sont cachés.
+Seuls vos propres programmes peuvent être arrêtés, pas ceux du système.
 
 ![Liste des processus avec filtre et bouton Arrêter](images/processus-liste.png)
 
