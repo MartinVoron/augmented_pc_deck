@@ -50,6 +50,22 @@ describe("GeneralSection : encoche", () => {
     });
   });
 
+  it("ancre en glissant par défaut, et peut le couper", async () => {
+    render(GeneralSection);
+
+    const toggle = screen.getByRole("switch", {
+      name: "Ancrer en lâchant la fenêtre contre un bord",
+    });
+    expect((toggle as HTMLInputElement).checked).toBe(true);
+    await fireEvent.click(toggle);
+
+    expect(mockedInvoke).toHaveBeenCalledWith("settings_save", {
+      config: expect.objectContaining({
+        window: { alwaysOnTop: false, fullscreen: false, dockOnDrag: false },
+      }),
+    });
+  });
+
   it("enregistre l'apparence de l'encoche", async () => {
     render(GeneralSection);
 
