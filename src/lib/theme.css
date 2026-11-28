@@ -1,6 +1,9 @@
 /*
-  Palette et dimensions communes de l'interface (thème sombre).
+  Palette et dimensions communes de l'interface.
   Tous les composants utilisent ces variables plutôt que des couleurs en dur.
+  Ce bloc est le thème « Classique » (sombre) ; les autres thèmes, plus bas,
+  ne font que redéfinir des variables (attributs data-theme et data-scheme
+  posés sur la racine, voir src/lib/appearance).
 */
 :root {
   color-scheme: dark;
@@ -33,9 +36,145 @@
   --tile-gap: 12px;
   --tile-radius: 14px;
 
+  /* Fond de la fenêtre, barre de titre */
+  --app-bg: var(--color-bg);
+  --titlebar-bg: var(--color-bg);
+  --titlebar-border: var(--color-border);
+
+  /* Tuiles : fond, bordure, bandeau de couleur en haut, ombre, flou */
+  --tile-bg: var(--color-surface);
+  --tile-bg-hover: var(--color-surface-hover);
+  --tile-border: var(--color-border);
+  --tile-accent-width: 3px;
+  --tile-shadow: none;
+  --tile-backdrop: none;
+  --tile-title-size: 0.9rem;
+  --tile-title-color: inherit;
+  --tile-title-transform: none;
+  --tile-title-spacing: normal;
+
+  /* Onglets des pages */
+  --tabs-bg: transparent;
+  --tabs-padding: 0;
+  --tabs-radius: 0;
+  --tab-radius: 999px;
+  --tab-active-bg: var(--color-surface);
+  --tab-active-border: var(--color-border);
+  --tab-active-shadow: none;
+  --tab-hover-bg: var(--color-surface);
+
+  /* Boutons du bas de la fenêtre */
+  --button-bg: transparent;
+  --button-radius: 0.5rem;
+
   font-family: "Segoe UI", system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: var(--color-text);
-  background-color: var(--color-bg);
+  background: var(--app-bg);
+}
+
+/*
+  Thème « Verre » : tuiles translucides et floutées sur un fond coloré,
+  façon widgets de macOS. Existe en sombre et en clair.
+*/
+:root[data-theme="glass"] {
+  --tile-radius: 22px;
+  --tile-gap: 14px;
+  --tile-accent-width: 1px;
+  --tile-backdrop: blur(36px) saturate(180%);
+  --tile-title-size: 0.75rem;
+  --tile-title-transform: uppercase;
+  --tile-title-spacing: 0.05em;
+  --titlebar-border: transparent;
+  --tabs-padding: 3px;
+  --tabs-radius: 12px;
+  --tab-radius: 9px;
+  --tab-active-border: transparent;
+  --button-radius: 999px;
+
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+:root[data-theme="glass"][data-scheme="dark"] {
+  color-scheme: dark;
+  --color-bg: rgb(0 0 0 / 22%);
+  --color-surface: #1f1b30;
+  --color-surface-hover: rgb(255 255 255 / 12%);
+  --color-border: rgb(255 255 255 / 14%);
+  --color-text: #fff;
+  --color-text-muted: rgb(235 235 245 / 65%);
+  --color-accent: #0a84ff;
+  --color-success: #30d158;
+  --color-warning: #ffd60a;
+  --color-danger: #ff453a;
+  --color-purple: #bf5af2;
+  --color-danger-bg: rgb(255 69 58 / 16%);
+  --color-danger-text: #ffb4ae;
+  --color-success-bg: rgb(48 209 88 / 16%);
+  --color-success-text: #b5f0c4;
+
+  --app-bg:
+    radial-gradient(60% 70% at 10% 10%, #e0568a 0%, transparent 60%),
+    radial-gradient(50% 60% at 90% 15%, #4f6cf0 0%, transparent 60%),
+    radial-gradient(70% 70% at 70% 100%, #10a88c 0%, transparent 60%),
+    radial-gradient(60% 60% at 15% 95%, #8a4ff0 0%, transparent 60%), #1b1533;
+  --titlebar-bg: transparent;
+  --tile-bg: rgb(30 28 48 / 38%);
+  --tile-bg-hover: rgb(40 38 62 / 44%);
+  --tile-border: rgb(255 255 255 / 16%);
+  --tile-accent-color: rgb(255 255 255 / 30%);
+  --tile-shadow: 0 10px 40px rgb(0 0 0 / 25%), inset 0 1px 0 rgb(255 255 255 / 10%);
+  --tile-title-color: rgb(255 255 255 / 72%);
+  --tabs-bg: rgb(0 0 0 / 22%);
+  --tab-active-bg: rgb(255 255 255 / 20%);
+  --tab-active-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+  --tab-hover-bg: rgb(255 255 255 / 10%);
+  --button-bg: rgb(255 255 255 / 12%);
+}
+
+:root[data-theme="glass"][data-scheme="light"] {
+  color-scheme: light;
+  --color-bg: rgb(118 118 128 / 12%);
+  --color-surface: #fbfbfd;
+  --color-surface-hover: rgb(0 0 0 / 6%);
+  --color-border: rgb(0 0 0 / 10%);
+  --color-text: #1d1d1f;
+  --color-text-muted: #6e6e73;
+  --color-accent: #007aff;
+  --color-success: #248a3d;
+  --color-warning: #c93400;
+  --color-danger: #d70015;
+  --color-purple: #8944ab;
+  --color-danger-bg: rgb(255 59 48 / 12%);
+  --color-danger-text: #b3261e;
+  --color-success-bg: rgb(52 199 89 / 14%);
+  --color-success-text: #1e6b31;
+
+  --app-bg:
+    radial-gradient(50% 60% at 0% 0%, #ffd3e6 0%, transparent 70%),
+    radial-gradient(50% 60% at 100% 10%, #cfe0ff 0%, transparent 70%),
+    radial-gradient(60% 60% at 60% 100%, #d2f3e8 0%, transparent 70%), #f2f2f7;
+  --titlebar-bg: transparent;
+  --tile-bg: rgb(255 255 255 / 68%);
+  --tile-bg-hover: rgb(255 255 255 / 82%);
+  --tile-border: rgb(255 255 255 / 85%);
+  --tile-accent-color: rgb(255 255 255 / 95%);
+  --tile-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 12px 32px rgb(0 0 0 / 8%);
+  --tile-title-color: #3a3a3c;
+  --tabs-bg: rgb(118 118 128 / 12%);
+  --tab-active-bg: #fff;
+  --tab-active-shadow: 0 3px 8px rgb(0 0 0 / 12%), 0 0 1px rgb(0 0 0 / 10%);
+  --tab-hover-bg: rgb(0 0 0 / 5%);
+  --button-bg: rgb(255 255 255 / 70%);
+}
+
+/* Flou natif de Windows 11 sous la fenêtre : le fond peint devient un simple voile. */
+:root[data-theme="glass"][data-scheme="dark"][data-window-effect] {
+  --app-bg: rgb(20 16 40 / 35%);
+}
+
+:root[data-theme="glass"][data-scheme="light"][data-window-effect] {
+  --app-bg: rgb(245 245 250 / 40%);
 }

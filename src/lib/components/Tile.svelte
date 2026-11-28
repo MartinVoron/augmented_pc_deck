@@ -51,16 +51,18 @@
     min-width: 0;
     min-height: 0;
     padding: 0.75rem;
-    border: 1px solid var(--color-border);
-    border-top: 3px solid var(--tile-color);
+    border: 1px solid var(--tile-border);
+    border-top: var(--tile-accent-width) solid var(--tile-accent-color, var(--tile-color));
     border-radius: var(--tile-radius);
-    background: var(--color-surface);
+    background: var(--tile-bg);
+    box-shadow: var(--tile-shadow);
+    backdrop-filter: var(--tile-backdrop);
     overflow: hidden;
     transition: background-color 0.15s;
   }
 
   .tile:hover {
-    background: var(--color-surface-hover);
+    background: var(--tile-bg-hover);
   }
 
   header {
@@ -77,8 +79,11 @@
 
   h2 {
     margin: 0;
-    font-size: 0.9rem;
+    color: var(--tile-title-color);
+    font-size: var(--tile-title-size);
     font-weight: 600;
+    text-transform: var(--tile-title-transform);
+    letter-spacing: var(--tile-title-spacing);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
