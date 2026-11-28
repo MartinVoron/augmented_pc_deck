@@ -1,14 +1,18 @@
 <!--
-  Grille de tuiles. Le nombre de colonnes s'adapte à la largeur de la fenêtre ;
-  les tuiles se placent dans le premier trou libre (grid-auto-flow: dense).
+  Grille de tuiles. Le nombre de colonnes s'adapte à la largeur de la fenêtre,
+  sauf si `columns` le fixe (panneau de la fenêtre ancrée) ; les tuiles se placent
+  dans le premier trou libre (grid-auto-flow: dense).
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  let { children }: { children: Snippet } = $props();
+  let { children, columns }: { children: Snippet; columns?: number } = $props();
 </script>
 
-<div class="grid">
+<div
+  class="grid"
+  style:grid-template-columns={columns ? `repeat(${columns}, var(--tile-unit))` : undefined}
+>
   {@render children()}
 </div>
 

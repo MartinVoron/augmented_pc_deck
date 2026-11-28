@@ -16,3 +16,8 @@ body {
   margin: 0;
   overflow: hidden;
 }
+
+/* Fenêtre ancrée en encoche : la fenêtre est transparente autour de l'encoche. */
+:root[data-docked] {
+  background: transparent;
+}
