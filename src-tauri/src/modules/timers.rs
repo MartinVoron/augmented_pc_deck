@@ -2,7 +2,7 @@
 //!
 //! Les comptes à rebours tournent côté Rust, pas dans l'interface : ils continuent
 //! même quand la fenêtre est masquée (où le navigateur ralentit ses minuteries),
-//! et la notification Windows part à l'heure.
+//! et la notification part à l'heure.
 //!
 //! L'interface ne reçoit pas un tic par seconde : elle reçoit l'heure de fin
 //! (`endsAt`) et calcule elle-même le temps restant. Chaque changement d'état est

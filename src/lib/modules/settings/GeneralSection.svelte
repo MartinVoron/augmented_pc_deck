@@ -10,7 +10,7 @@
   let autostart = $state<boolean | null>(null);
   let autostartError = $state("");
 
-  // Le lancement au démarrage est lu dans Windows, pas dans la configuration.
+  // Le lancement au démarrage est lu dans le système, pas dans la configuration.
   getAutostart()
     .then((enabled) => (autostart = enabled))
     .catch((e: Error) => (autostartError = e.message));
@@ -56,7 +56,7 @@
 
   <h3>Notifications</h3>
   <Toggle
-    label="Afficher les notifications Windows"
+    label="Afficher les notifications"
     checked={settings.config.general.notificationsEnabled}
     onchange={(enabled) =>
       updateSettings((config) => (config.general.notificationsEnabled = enabled))}
@@ -107,6 +107,11 @@
       <option value="black">Entièrement noire</option>
     </select>
   </label>
+  <Toggle
+    label="Ancrer en lâchant la fenêtre contre un bord"
+    checked={settings.config.window.dockOnDrag ?? true}
+    onchange={(enabled) => updateSettings((config) => (config.window.dockOnDrag = enabled))}
+  />
   <p class="hint">
     Ancrée, la fenêtre devient une petite encoche au bord de l'écran, toujours visible. Passez la
     souris dessus pour voir vos tuiles ; le bouton Détacher remet la fenêtre normale.
@@ -114,7 +119,7 @@
 
   <h3>Démarrage</h3>
   <Toggle
-    label="Lancer au démarrage de Windows"
+    label="Lancer à l'ouverture de la session"
     checked={autostart ?? false}
     disabled={autostart === null}
     onchange={changeAutostart}

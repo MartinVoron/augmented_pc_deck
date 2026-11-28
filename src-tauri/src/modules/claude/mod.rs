@@ -1,7 +1,8 @@
 //! Claude : réception des notifications de Claude Code.
 //!
 //! Claude Code lance un « hook » (une commande) quand il attend une réponse ou
-//! qu'il a fini. Ce hook est un petit script PowerShell, créé par l'application,
+//! qu'il a fini. Ce hook est un petit script (PowerShell sous Windows, `sh` sous Linux),
+//! créé par l'application,
 //! qui transmet l'événement au serveur local (voir [`server`]). Les événements sont
 //! gardés en mémoire, envoyés à l'interface avec [`CHANGED_EVENT`], et signalés par
 //! une notification Windows.
@@ -86,6 +87,8 @@ pub struct ClaudeStatus {
     pub script_installed: bool,
     /// Bloc à ajouter dans `~/.claude/settings.json`.
     pub settings_snippet: String,
+    /// Emplacement des réglages de Claude Code, tel qu'affiché à l'utilisateur.
+    pub settings_file: String,
 }
 
 fn now_ms() -> u64 {
@@ -130,6 +133,7 @@ fn status<R: Runtime>(app: &AppHandle<R>, state: &ClaudeState) -> AppResult<Clau
         port: server::PORT,
         script_installed: path.exists(),
         settings_snippet: hook::settings_snippet(&path),
+        settings_file: hook::SETTINGS_FILE.to_string(),
         script_path: path.display().to_string(),
     })
 }
@@ -220,9 +224,32 @@ pub fn claude_install_hook<R: Runtime>(
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    std::fs::write(&path, hook::script(&token, server::PORT))?;
+    write_script(&path, &hook::script(&token, server::PORT))?;
     log::info!("script du hook Claude écrit dans {}", path.display());
     status(&app, &state)
+}
+
+/// Écrit le script. Sous Linux, il n'est lisible que par l'utilisateur (il contient
+/// le jeton) et il est exécutable.
+fn write_script(path: &std::path::Path, content: &str) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o700)
+            .open(path)?;
+        // Un ancien fichier garde ses droits : on les resserre.
+        file.set_permissions(std::fs::Permissions::from_mode(0o700))?;
+        file.write_all(content.as_bytes())
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::write(path, content)
+    }
 }
 
 /// Remplace le jeton (par exemple si le script a été copié ailleurs).

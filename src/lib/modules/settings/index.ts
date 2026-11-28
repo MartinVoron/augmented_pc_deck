@@ -54,6 +54,8 @@ export interface Config {
     dock?: DockEdge;
     /** Apparence de l'encoche repliée. */
     notchStyle?: NotchStyle;
+    /** Lâcher la fenêtre contre un bord de l'écran l'y ancre (oui si absent). */
+    dockOnDrag?: boolean;
   };
   layout: {
     /** Pages de tuiles, dans l'ordre des onglets. */
@@ -68,7 +70,7 @@ export interface Config {
   gmail?: {
     /** Intervalle de rafraîchissement des non lus, en minutes. */
     refreshMinutes: number;
-    /** Notification Windows pour chaque nouveau message. */
+    /** Notification pour chaque nouveau message. */
     notifyNew: boolean;
   };
 }
@@ -83,12 +85,12 @@ export function saveSettings(config: Config): Promise<Config> {
   return call<Config>("settings_save", { config });
 }
 
-/** Indique si l'application se lance au démarrage de Windows. */
+/** Indique si l'application se lance à l'ouverture de la session. */
 export function getAutostart(): Promise<boolean> {
   return call<boolean>("window_autostart_get");
 }
 
-/** Active ou désactive le lancement au démarrage de Windows. */
+/** Active ou désactive le lancement à l'ouverture de la session. */
 export function setAutostart(enabled: boolean): Promise<void> {
   return call<void>("window_autostart_set", { enabled });
 }

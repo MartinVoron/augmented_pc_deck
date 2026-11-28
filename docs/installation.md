@@ -119,16 +119,16 @@ faut l'extension « AppIndicator » pour voir l'icône.
 - **Toujours au premier plan** et **Plein écran** : pratique sur un second écran ou une
   petite tablette posée à côté du clavier. La taille et la position de la fenêtre sont
   retenues automatiquement.
-- **Lancer au démarrage de Windows** : l'application s'ouvre à chaque ouverture de
+- **Lancer à l'ouverture de la session** : l'application s'ouvre à chaque ouverture de
   session.
-- **Afficher les notifications Windows**, et **Envoyer une notification d'essai** pour
+- **Afficher les notifications**, et **Envoyer une notification d'essai** pour
   vérifier qu'elles arrivent. Si rien ne s'affiche, regardez dans les paramètres de
   Windows : Système > Notifications > Augmented PC Deck.
 
-Sous Linux, le lancement au démarrage ajoute un fichier dans `~/.config/autostart`, et les
-notifications s'affichent dans le centre de notifications du bureau. Leurs sons ne sont pas
-encore adaptés à Linux
-([#82](https://github.com/MartinVoron/augmented_pc_deck/issues/82)).
+Sous Linux, le lancement à l'ouverture de la session ajoute un fichier
+`.desktop` dans `~/.config/autostart`. Les notifications s'affichent dans le
+centre de notifications du bureau, avec les sons du thème du bureau (si votre bureau joue
+les sons des notifications). Si rien ne s'affiche, vérifiez le mode Ne pas déranger.
 
 ## 4. Raccourcis (lanceur)
 
@@ -149,9 +149,15 @@ La tuile **Raccourcis** lance en un clic un programme, un fichier, un dossier ou
 
 ![Fenêtre de modification d'un raccourci](images/raccourcis-modifier.png)
 
-Sous Linux, les adresses, fichiers et dossiers s'ouvrent avec l'application associée. Le
-lancement d'un programme ou d'un fichier `.desktop` (menu des applications) arrive bientôt
-([#83](https://github.com/MartinVoron/augmented_pc_deck/issues/83)).
+Sous Linux :
+
+- pour une application installée, choisissez son fichier `.desktop`, dans
+  `/usr/share/applications` (ou `~/.local/share/applications`, et
+  `/var/lib/flatpak/exports/share/applications` pour Flatpak). La tuile lance
+  l'application et affiche son icône ;
+- un fichier exécutable (programme, script, `.AppImage`) est lancé directement, avec ses
+  arguments ;
+- les adresses, fichiers et dossiers s'ouvrent avec l'application associée.
 
 Chaque tuile Raccourcis a sa propre liste : vous pouvez en mettre une par page (outils
 de travail, jeux, dossiers…). Si une cible a été déplacée ou supprimée, la tuile le dit
@@ -165,8 +171,9 @@ mis à jour toutes les 2 secondes.
 **Voir les processus** ouvre la liste des programmes en cours, triable et filtrable par
 nom. **Arrêter** termine un programme bloqué (une confirmation est demandée).
 
-Sous Linux, la liste des disques peut encore montrer des disques virtuels, par exemple
-ceux des paquets Snap ([#84](https://github.com/MartinVoron/augmented_pc_deck/issues/84)).
+Sous Linux, les disques sont nommés par leur point de montage (`/`, `/home`, une clé USB
+dans `/media/…`) ; les disques virtuels (paquets Snap, mémoire, `/boot`) sont cachés.
+Seuls vos propres programmes peuvent être arrêtés, pas ceux du système.
 
 ![Liste des processus avec filtre et bouton Arrêter](images/processus-liste.png)
 
@@ -176,7 +183,7 @@ La tuile **Minuteurs** a trois onglets :
 
 - **Minuteurs** (comptes à rebours) : **Nouveau minuteur**, un nom (« Thé », « Lessive »…)
   et une durée, ou une durée toute prête. Plusieurs minuteurs peuvent tourner en même
-  temps. Une notification Windows prévient à la fin.
+  temps. Une notification prévient à la fin.
 - **Chronomètre** : démarrer, mettre en pause, noter des tours, remettre à zéro.
 - **Pomodoro** : alternance travail et pause. Le bouton de réglage permet de choisir les
   durées (travail, pause, longue pause) et le nombre de séances avant la longue pause.
@@ -202,9 +209,9 @@ Elle marche avec toute application qui s'affiche dans le contrôle du volume de 
 Spotify, Deezer, YouTube dans Edge ou Chrome, le lecteur multimédia de
 Windows, etc. Un bouton grisé veut dire que l'application ne le propose pas.
 
-Sous Linux, la tuile n'affiche pas encore la musique en cours : la lecture par MPRIS
-(Spotify, Firefox, VLC…) arrive bientôt
-([#80](https://github.com/MartinVoron/augmented_pc_deck/issues/80)).
+Sous Linux, elle marche avec tout lecteur compatible MPRIS, c'est-à-dire ceux qui
+s'affichent dans le panneau média du bureau : Spotify, Firefox, Chrome, VLC, Rhythmbox,
+Elisa… S'il y en a plusieurs, la tuile montre celui qui joue.
 
 ![Tuile Musique avec pochette et boutons de lecture](images/musique-controles.png)
 
@@ -238,10 +245,10 @@ assignées et vos notifications non lues. Il faut un **jeton personnel** GitHub.
 Le jeton est rangé dans le Gestionnaire d'identification Windows, jamais dans un fichier.
 Quand il expire, la tuile le signale : créez-en un nouveau et recommencez l'étape 3.
 
-Sous Linux, les jetons (GitHub, Gmail, Claude) ne sont pas encore gardés d'un lancement à
-l'autre : il faut se reconnecter après chaque redémarrage de l'application, en attendant
-leur rangement dans le trousseau du bureau
-([#79](https://github.com/MartinVoron/augmented_pc_deck/issues/79)).
+Sous Linux, les jetons (GitHub, Gmail, Claude) sont rangés dans le trousseau du bureau
+(GNOME Keyring, KWallet…), visible par exemple dans l'application « Mots de passe et clés »
+(Seahorse), sous le nom `augmented-pc-deck`. Si l'application dit qu'elle ne peut pas
+enregistrer le jeton, vérifiez qu'un trousseau est installé et déverrouillé.
 
 ## 11. Gmail
 
@@ -276,8 +283,8 @@ est ici : **[Recevoir les notifications de Claude Code](claude-hook.md)**. En r�
 
 ![Paramètres Claude : serveur local, script et bloc à copier](images/claude-parametres.png)
 
-Sous Linux, ce module n'est pas encore disponible : le script créé est pour Windows
-([#81](https://github.com/MartinVoron/augmented_pc_deck/issues/81)).
+Sous Linux, c'est pareil : le script est un script `sh` qui utilise `curl`, et le
+fichier des réglages est `~/.claude/settings.json`.
 
 ## 13. Mettre à jour, désinstaller
 
@@ -285,15 +292,15 @@ Sous Linux, ce module n'est pas encore disponible : le script créé est pour Wi
   par-dessus l'ancienne. Vos pages, tuiles, réglages et connexions sont gardés.
   Le numéro de version installé s'affiche en bas à gauche de la fenêtre.
 - **Désinstaller** : Paramètres de Windows > Applications > Applications installées >
-  Augmented PC Deck > Désinstaller. Désactivez d'abord **Lancer au démarrage de
-  Windows**, sinon une entrée vide reste dans les applications de démarrage. Cochez
+  Augmented PC Deck > Désinstaller. Désactivez d'abord **Lancer à l'ouverture de
+  la session**, sinon une entrée vide reste dans les applications de démarrage. Cochez
   « Supprimer les données de l'application » pour tout effacer.
 
 Où sont vos données :
 
 - réglages, pages et tuiles : `%APPDATA%\fr.martinvoron.augmented-pc-deck\config.json` ;
 - jetons GitHub, Gmail et Claude : Gestionnaire d'identification Windows, entrées
-  `augmented-pc-deck` ;
+  `augmented-pc-deck` (sous Linux : trousseau du bureau) ;
 - journal des erreurs : `%LOCALAPPDATA%\fr.martinvoron.augmented-pc-deck\logs\`.
 
 Sous Linux :
@@ -301,7 +308,7 @@ Sous Linux :
 - **Mettre à jour** : installez le nouveau `.deb` de la même façon, ou remplacez
   l'ancien `.AppImage` par le nouveau.
 - **Désinstaller** : `sudo apt remove augmented-pc-deck` pour le `.deb`, ou supprimez le
-  fichier `.AppImage`. Désactivez d'abord **Lancer au démarrage**.
+  fichier `.AppImage`. Désactivez d'abord **Lancer à l'ouverture de la session**.
 - Réglages : `~/.config/fr.martinvoron.augmented-pc-deck/config.json` ; journal :
   `~/.local/share/fr.martinvoron.augmented-pc-deck/logs/`.
 

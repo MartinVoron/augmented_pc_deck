@@ -104,14 +104,14 @@ Chaque fonctionnalité a sa place, côté Rust et côté interface, avec le mêm
 src/
   App.svelte              écran principal
   lib/tauri.ts            fonction call() pour appeler le Rust
-  lib/notifications.ts    envoi des notifications Windows
+  lib/notifications.ts    envoi des notifications du système
   lib/theme.css           palette du thème sombre (variables CSS)
   lib/grid/               tailles, icônes et disposition par défaut des tuiles
   lib/components/         composants communs : grille, tuile, protection des tuiles
   lib/modules/<module>/   composants et appels Tauri d'un module
 src-tauri/
   src/error.rs            erreur commune renvoyée à l'interface
-  src/notifications.rs    service commun des notifications Windows
+  src/notifications.rs    service commun des notifications
   src/modules/<module>.rs commandes Tauri d'un module
   tauri.conf.json         configuration de la fenêtre et de l'installateur
 public/                   fichiers statiques de l'interface
@@ -141,22 +141,39 @@ Les réglages et la disposition des tuiles sont enregistrés dans
 - La taille, la position et l'écran de la fenêtre sont retenus d'un lancement à l'autre
   (pratique pour la laisser sur un second écran).
 - Paramètres > Général > Fenêtre : « Toujours au premier plan » et « Plein écran ».
-- Paramètres > Général > Démarrage : « Lancer au démarrage de Windows ».
+- Paramètres > Général > Démarrage : « Lancer à l'ouverture de la session ».
 - La barre de titre de Windows est remplacée par une barre sombre avec trois ronds :
   rouge pour fermer, jaune pour réduire, vert pour agrandir. On déplace la fenêtre en
   la tenant par cette barre, et un double-clic l'agrandit.
 - Fermer (rond rouge ou Alt+F4) ne quitte pas l'application : la fenêtre se cache dans
   la zone de notification.
 - L'icône dans la zone de notification propose Afficher, Masquer et Quitter ;
-  un clic sur l'icône affiche la fenêtre. Pour arrêter vraiment l'application, utiliser
+  un clic sur l'icône affiche la fenêtre (sous Linux, un clic ouvre le menu). Pour arrêter vraiment l'application, utiliser
   Quitter.
+
+### Encoche au bord de l'écran
+
+La fenêtre peut se ranger contre un bord de l'écran (haut, bas, gauche ou droite), comme
+l'encoche d'un MacBook ou la Dynamic Island d'un iPhone :
+
+- **Pour l'ancrer** : lâcher la fenêtre en la tenant par sa barre de titre, la souris
+  collée à un bord de l'écran, ou choisir le bord dans Paramètres > Général > Encoche.
+- **Repliée**, ce n'est plus qu'une petite encoche noire, avec le logo ou entièrement
+  noire (réglage « Encoche repliée »), toujours au premier plan.
+- **Au survol** de la souris, elle s'ouvre avec une animation et montre les tuiles de la
+  page affichée. Elle se replie quand la souris s'en va.
+- **Pour la détacher** : bouton Détacher (icône d'une fenêtre dans une fenêtre) en haut à
+  droite du panneau ouvert. La fenêtre reprend sa taille et sa place d'avant.
+- L'ancrage en glissant se coupe dans les paramètres (« Ancrer en lâchant la fenêtre
+  contre un bord »).
 
 ## Jetons de connexion
 
 Les jetons GitHub, Gmail et Claude ne sont jamais écrits dans un fichier de l'application
 ni dans le journal. Ils sont rangés dans le **Gestionnaire d'identification Windows**
 (Panneau de configuration > Gestionnaire d'identification > Informations d'identification
-Windows), sous le nom `augmented-pc-deck`. L'interface peut enregistrer ou supprimer un
+Windows), sous le nom `augmented-pc-deck`. Sous Linux, ils vont dans le trousseau du
+bureau (Secret Service : GNOME Keyring, KWallet…). L'interface peut enregistrer ou supprimer un
 jeton, mais jamais le relire : seul le Rust s'en sert (`src-tauri/src/tokens.rs`).
 
 ## Journal des erreurs
