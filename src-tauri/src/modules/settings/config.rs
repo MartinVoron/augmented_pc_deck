@@ -65,6 +65,36 @@ pub struct WindowSettings {
     pub always_on_top: bool,
     /// Fenêtre en plein écran.
     pub fullscreen: bool,
+    /// Bord de l'écran où la fenêtre est ancrée en encoche (`none` : fenêtre normale).
+    pub dock: DockEdge,
+    /// Apparence de l'encoche quand la fenêtre ancrée est repliée.
+    pub notch_style: NotchStyle,
+}
+
+/// Bord de l'écran où la fenêtre est ancrée. Une valeur inconnue revient à `none`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DockEdge {
+    Top,
+    Bottom,
+    Left,
+    Right,
+    /// Fenêtre normale, non ancrée.
+    #[default]
+    #[serde(other)]
+    None,
+}
+
+/// Apparence de l'encoche repliée. Une valeur inconnue revient à `logo`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NotchStyle {
+    /// Encoche entièrement noire.
+    Black,
+    /// Encoche noire avec le logo de l'application.
+    #[default]
+    #[serde(other)]
+    Logo,
 }
 
 /// Réglages du module GitHub.
@@ -415,6 +445,28 @@ mod tests {
         let text = serde_json::to_string_pretty(&config).unwrap();
         assert!(text.contains("\"notificationsEnabled\": false"));
         assert_eq!(parse(&text).unwrap(), config);
+    }
+
+    #[test]
+    fn window_dock_reads_and_falls_back_to_a_normal_window() {
+        let config =
+            parse(r#"{ "version": 3, "window": { "dock": "left", "notchStyle": "black" } }"#)
+                .unwrap();
+        assert_eq!(config.window.dock, DockEdge::Left);
+        assert_eq!(config.window.notch_style, NotchStyle::Black);
+        let written = serde_json::to_string(&config).unwrap();
+        assert!(written.contains(r#""dock":"left""#));
+        assert!(written.contains(r#""notchStyle":"black""#));
+
+        // Ancienne configuration ou valeur inconnue : fenêtre normale, encoche avec logo.
+        let old = parse(r#"{ "version": 3, "window": { "alwaysOnTop": true } }"#).unwrap();
+        assert_eq!(old.window.dock, DockEdge::None);
+        assert_eq!(old.window.notch_style, NotchStyle::Logo);
+        let odd =
+            parse(r#"{ "version": 3, "window": { "dock": "milieu", "notchStyle": "rose" } }"#)
+                .unwrap();
+        assert_eq!(odd.window.dock, DockEdge::None);
+        assert_eq!(odd.window.notch_style, NotchStyle::Logo);
     }
 
     #[test]
