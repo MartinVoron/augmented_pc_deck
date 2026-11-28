@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NOTCH_DEPTH } from "../dock";
+import { NOTCH_ACTIVE_LENGTH, NOTCH_DEPTH } from "../dock";
 import { foldedSize, windowForPanel } from "../dock/island";
 import { panelLayout } from "../dock/panel";
 import { dock } from "../dock/state.svelte";
@@ -98,6 +98,63 @@ describe("DockedView", () => {
       width: vertical.width,
       height: vertical.height,
     });
+  });
+
+  it("montre le morceau en cours dans l'encoche repliée", async () => {
+    mockedInvoke.mockImplementation((command, args) => {
+      if (command === "settings_get") return Promise.resolve(config);
+      if (command === "settings_save") return Promise.resolve((args as { config: Config }).config);
+      if (command === "music_now_playing") {
+        return Promise.resolve({
+          title: "Clair de lune",
+          artist: "Debussy",
+          album: "",
+          source: "Spotify",
+          status: "playing",
+          positionMs: 0,
+          durationMs: 300000,
+          updatedAt: 0,
+          thumbnail: null,
+          canPlayPause: true,
+          canNext: true,
+          canPrevious: true,
+        });
+      }
+      return Promise.resolve();
+    });
+    render(DockedView, { pageId: "home", onselect: () => {} });
+
+    expect(
+      await screen.findByRole("img", { name: "Lecture en cours : Clair de lune" }),
+    ).toBeTruthy();
+    // L'encoche s'allonge pour la pochette, le titre et l'égaliseur.
+    await vi.waitFor(() =>
+      expect(mockedInvoke).toHaveBeenCalledWith("dock_set_notch", { length: NOTCH_ACTIVE_LENGTH }),
+    );
+    expect(document.querySelector(".notch img[src='/favicon.png']")).toBeNull();
+  });
+
+  it("montre le minuteur qui tourne dans l'encoche repliée", async () => {
+    mockedInvoke.mockImplementation((command, args) => {
+      if (command === "settings_get") return Promise.resolve(config);
+      if (command === "settings_save") return Promise.resolve((args as { config: Config }).config);
+      if (command === "timers_list") {
+        return Promise.resolve({
+          "t:1": {
+            name: "Thé",
+            status: "running",
+            durationMs: 180000,
+            remainingMs: 180000,
+            endsAt: Date.now() + 125000,
+          },
+        });
+      }
+      return Promise.resolve(null);
+    });
+    render(DockedView, { pageId: "home", onselect: () => {} });
+
+    const timer = await screen.findByRole("timer", { name: "Thé : temps restant" });
+    expect(timer.textContent?.trim()).toMatch(/^2:0[4-6]$/);
   });
 
   it("ouvert, affiche les tuiles et se détache avec le bouton", async () => {

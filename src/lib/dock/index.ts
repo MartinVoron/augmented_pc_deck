@@ -43,6 +43,14 @@ export function getDockStatus(): Promise<DockStatus> {
   return call<DockStatus>("dock_status");
 }
 
+/** Longueur de l'encoche repliée quand elle montre une activité en direct. */
+export const NOTCH_ACTIVE_LENGTH = 300;
+
+/** Donne au Rust la longueur de l'encoche repliée, en pixels logiques. */
+export function setDockNotch(length: number): Promise<void> {
+  return call<void>("dock_set_notch", { length });
+}
+
 /**
  * Donne au Rust la taille du panneau ouvert, en pixels logiques. Il la réduit
  * à la taille de l'écran si besoin.
