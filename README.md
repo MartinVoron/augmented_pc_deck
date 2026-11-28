@@ -156,7 +156,8 @@ Les réglages et la disposition des tuiles sont enregistrés dans
 Les jetons GitHub, Gmail et Claude ne sont jamais écrits dans un fichier de l'application
 ni dans le journal. Ils sont rangés dans le **Gestionnaire d'identification Windows**
 (Panneau de configuration > Gestionnaire d'identification > Informations d'identification
-Windows), sous le nom `augmented-pc-deck`. L'interface peut enregistrer ou supprimer un
+Windows), sous le nom `augmented-pc-deck`. Sous Linux, ils vont dans le trousseau du
+bureau (Secret Service : GNOME Keyring, KWallet…). L'interface peut enregistrer ou supprimer un
 jeton, mais jamais le relire : seul le Rust s'en sert (`src-tauri/src/tokens.rs`).
 
 ## Journal des erreurs
