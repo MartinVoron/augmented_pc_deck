@@ -107,6 +107,11 @@
       <option value="black">Entièrement noire</option>
     </select>
   </label>
+  <Toggle
+    label="Ancrer en lâchant la fenêtre contre un bord"
+    checked={settings.config.window.dockOnDrag ?? true}
+    onchange={(enabled) => updateSettings((config) => (config.window.dockOnDrag = enabled))}
+  />
   <p class="hint">
     Ancrée, la fenêtre devient une petite encoche au bord de l'écran, toujours visible. Passez la
     souris dessus pour voir vos tuiles ; le bouton Détacher remet la fenêtre normale.
