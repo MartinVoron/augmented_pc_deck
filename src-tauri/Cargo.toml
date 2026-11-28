@@ -1,6 +1,6 @@
 [package]
 name = "augmented-pc-deck"
-version = "0.1.0"
+version = "0.2.0"
 description = "Tableau de bord de bureau pour Windows, façon Stream Deck"
 authors = ["Martin Voron"]
 license = "MIT"

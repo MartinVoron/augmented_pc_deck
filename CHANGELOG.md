@@ -4,6 +4,45 @@ Toutes les évolutions notables d'Augmented PC Deck sont listées ici, de la plu
 à la plus ancienne. Ce fichier est écrit automatiquement à partir des messages de commit
 (voir `CONTRIBUTING.md`) : ne pas le modifier à la main, sauf pour corriger une coquille.
 
+## [0.2.0](https://github.com/MartinVoron/augmented_pc_deck/compare/v0.1.0...v0.2.0) - 2026-11-28
+
+### Nouveautés
+
+- **reglages :** retenir le bord d'ancrage et l'aspect de l'encoche ([3fb23e4](https://github.com/MartinVoron/augmented_pc_deck/commit/3fb23e40a953edfd46e6945682401c26ad57fe77))
+- **tauri :** ancrer la fenetre en encoche et l'ouvrir au survol ([d26b476](https://github.com/MartinVoron/augmented_pc_deck/commit/d26b47607414da76c4aa08e39c2ea702206e334d))
+- **interface :** lire l'etat de l'ancrage depuis l'interface ([8242bb6](https://github.com/MartinVoron/augmented_pc_deck/commit/8242bb6d0a0de64619f89797c72b55cbf5f18d4d))
+- **interface :** calculer la taille du panneau d'apres les tuiles ([143c84c](https://github.com/MartinVoron/augmented_pc_deck/commit/143c84cb15af0d8c22035c68d80175fb90caf5f4))
+- **interface :** afficher l'encoche et l'ouvrir en panneau anime ([d94aebc](https://github.com/MartinVoron/augmented_pc_deck/commit/d94aebcbc301e4ed780c5254ddacd6e36171cd2d))
+- **reglages :** choisir le bord d'ancrage et l'aspect de l'encoche ([a0bcb56](https://github.com/MartinVoron/augmented_pc_deck/commit/a0bcb568908b0dbb085c2852dfb7154e619b953b))
+- **tauri :** ancrer la fenetre lachee contre un bord de l'ecran ([2164fba](https://github.com/MartinVoron/augmented_pc_deck/commit/2164fba85c0bcf4e5fcb37c5fd5dd3a2cb51e677))
+- **reglages :** couper l'ancrage en glissant la fenetre ([12aef76](https://github.com/MartinVoron/augmented_pc_deck/commit/12aef76c15b6493ae4a33048b57c2b7c74b9e675))
+- **reglages :** garder les jetons dans le trousseau sous linux ([#86](https://github.com/MartinVoron/augmented_pc_deck/pull/86))
+- **musique :** lire la musique en cours par mpris sous linux ([379cec7](https://github.com/MartinVoron/augmented_pc_deck/commit/379cec7e0ac129836ee515ee4d2d7577334d32e3))
+- **claude :** installer un hook sh avec curl sous linux ([646d3f0](https://github.com/MartinVoron/augmented_pc_deck/commit/646d3f08c5681d9ae24863890a9dc8c1d8ada6c1))
+- **interface :** jouer les sons freedesktop sous linux ([1a8789f](https://github.com/MartinVoron/augmented_pc_deck/commit/1a8789f51eed8fcd4a6cf77c20de7789903ef1cf))
+- **lanceur :** lancer executables et fichiers .desktop sous linux ([96be968](https://github.com/MartinVoron/augmented_pc_deck/commit/96be968959b942ef7b0285b0121e49e853dd3c62))
+- **interface :** animer l'encoche avec un ressort facon boring.notch ([4917057](https://github.com/MartinVoron/augmented_pc_deck/commit/4917057c7dc9449e579eca6b6ba1739b2ea88c84))
+- **tauri :** allonger l'encoche repliee a la demande de l'interface ([d576c7a](https://github.com/MartinVoron/augmented_pc_deck/commit/d576c7a70503488fb676d77eed4f515c6f20674d))
+- **interface :** montrer le morceau ou le minuteur dans l'encoche ([64eae5c](https://github.com/MartinVoron/augmented_pc_deck/commit/64eae5ccf57a2a38ca7c8413bc206467568214c8))
+- **tauri :** passer par xwayland en session wayland pour l'encoche ([4cee7b8](https://github.com/MartinVoron/augmented_pc_deck/commit/4cee7b88007dae24c891413eddcd2ace370d2876))
+- **reglages :** enregistrer le theme et le mode clair ou sombre ([8aa7122](https://github.com/MartinVoron/augmented_pc_deck/commit/8aa7122aa18cbf0cb556536e1ac7ed8f3448da1a))
+- **interface :** ajouter le theme verre en sombre et en clair ([2cd3d88](https://github.com/MartinVoron/augmented_pc_deck/commit/2cd3d88ab34935cc8129b90a7311c190683acb20))
+- **interface :** appliquer l'apparence et le flou mica de windows ([c4712c7](https://github.com/MartinVoron/augmented_pc_deck/commit/c4712c7bc32e59c76f1beb58ef5a6ee575bed57e))
+- **reglages :** ajouter la section apparence des parametres ([057750e](https://github.com/MartinVoron/augmented_pc_deck/commit/057750ebed221fdebf9841bde4077d9adac531f3))
+- **interface :** regler le flou des tuiles du theme verre ([8541849](https://github.com/MartinVoron/augmented_pc_deck/commit/8541849d4cf43b20f8d0a045dd5af52216682803))
+- **reglages :** remplacer l'interrupteur de flou par un curseur ([a74a310](https://github.com/MartinVoron/augmented_pc_deck/commit/a74a310d32159c1eb47e411a39e953980246ee68))
+- **interface :** ancrer la fenêtre à gauche depuis la barre de titre ([70f2184](https://github.com/MartinVoron/augmented_pc_deck/commit/70f218434770bea0a50a4c2629c98bc80c8ed273))
+
+### Corrections
+
+- **interface :** relire la configuration apres un ancrage du rust ([2619f3b](https://github.com/MartinVoron/augmented_pc_deck/commit/2619f3ba046a8fbf19e3ea73a970ebe15f35af51))
+- **interface :** ne plus parler de windows dans les reglages ([71a48fe](https://github.com/MartinVoron/augmented_pc_deck/commit/71a48fe182feb1957f9b5168c875f3f0138efdc9))
+- **processus :** cacher disques virtuels et threads sous linux ([f688197](https://github.com/MartinVoron/augmented_pc_deck/commit/f6881976de49bd6adaad01ee997188f0f7b905f7))
+- **tauri :** garder la fenêtre ancrée à la taille du panneau ([8d26508](https://github.com/MartinVoron/augmented_pc_deck/commit/8d26508cb3ffeb13fa5082c8e3f2fefb186a9b71))
+- **interface :** donner tout de suite la longueur de l'encoche ([6e91d64](https://github.com/MartinVoron/augmented_pc_deck/commit/6e91d64fa0e1c660d370f26f69af0ee537c1eada))
+- **musique :** noter une seule fois l'erreur de lecture ([716f68e](https://github.com/MartinVoron/augmented_pc_deck/commit/716f68e03dfabaf5e6f0aa0a452c2a37e0313d39))
+- **tauri :** fiabiliser l'encoche sous wayland ([#114](https://github.com/MartinVoron/augmented_pc_deck/pull/114))
+
 ## [0.1.0](https://github.com/MartinVoron/augmented_pc_deck/releases/tag/v0.1.0) - 2026-11-27
 
 ### Nouveautés
