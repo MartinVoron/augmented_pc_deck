@@ -1,3 +1,4 @@
+pub mod dock;
 pub mod error;
 pub mod http;
 pub mod logging;
@@ -25,6 +26,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(window::state_plugin())
         .plugin(window::autostart_plugin())
+        .manage(dock::DockState::default())
         .manage(NotificationSettings::default())
         .manage(TokenStore::system())
         .manage(ProcessMonitor::default())
@@ -41,6 +43,8 @@ pub fn run() {
             settings::settings_get,
             settings::settings_save,
             window::window_autostart_get,
+            dock::dock_status,
+            dock::dock_set_panel,
             window::window_autostart_set,
             tokens::tokens_status,
             tokens::tokens_set,

@@ -14,7 +14,7 @@ pub use store::ConfigStore;
 
 use crate::error::{AppError, AppResult};
 use crate::notifications::NotificationSettings;
-use crate::window;
+use crate::{dock, window};
 
 /// Charge la configuration au démarrage et la rend disponible aux commandes.
 pub fn init<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
@@ -33,7 +33,10 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
 fn apply<R: Runtime>(app: &AppHandle<R>, config: &Config) {
     app.state::<NotificationSettings>()
         .set_enabled(config.general.notifications_enabled);
-    window::apply(app, &config.window);
+    // Ancrée en encoche, la fenêtre ignore le premier plan et le plein écran.
+    if !dock::apply(app, &config.window) {
+        window::apply(app, &config.window);
+    }
 }
 
 /// Renvoie la configuration actuelle.

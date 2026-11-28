@@ -12,7 +12,7 @@ use crate::error::{AppError, AppResult};
 use crate::modules::settings::config::WindowSettings;
 
 /// Nom de la fenêtre principale (voir `tauri.conf.json`).
-const MAIN: &str = "main";
+pub(crate) const MAIN: &str = "main";
 
 /// Retient la taille, la position (donc l'écran) et l'agrandissement de la fenêtre.
 /// Le plein écran n'en fait pas partie : il vient de la configuration.
