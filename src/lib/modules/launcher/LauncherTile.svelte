@@ -22,7 +22,7 @@
   let showDialog = $state(false);
   let root: HTMLElement | undefined = $state();
 
-  // Un fichier déposé sur la tuile depuis l'Explorateur devient un raccourci.
+  // Un fichier déposé sur la tuile depuis le gestionnaire de fichiers devient un raccourci.
   onMount(() =>
     onFileDrop((paths, element) => {
       if (!root || !element || !root.closest(".tile")?.contains(element)) return;

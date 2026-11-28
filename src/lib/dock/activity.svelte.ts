@@ -44,9 +44,13 @@ export function watchActivity(): () => void {
       failing = true;
     }
   }, MUSIC_POLL_MS);
-  const stopTimers = onTimersChanged((runs) => (live.runs = runs));
+  const stopTimers = onTimersChanged((runs) => {
+    live.runs = runs;
+  });
   listRuns()
-    .then((runs) => (live.runs = runs ?? {}))
+    .then((runs) => {
+      live.runs = runs ?? {};
+    })
     .catch((e: unknown) => logError("encoche", e));
   return () => {
     stopPolling();

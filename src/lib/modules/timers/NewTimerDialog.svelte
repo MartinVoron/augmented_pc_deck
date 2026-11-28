@@ -2,6 +2,7 @@
   Création d'un compte à rebours : un nom et une durée (avec des durées toutes prêtes).
 -->
 <script lang="ts">
+  import { portal } from "../../actions/portal";
   import { X } from "@lucide/svelte";
 
   let {
@@ -29,7 +30,7 @@
 
 <svelte:window onkeydown={(event) => event.key === "Escape" && onclose()} />
 
-<div class="backdrop">
+<div class="backdrop" use:portal>
   <div class="dialog" role="dialog" aria-modal="true" aria-label="Nouveau minuteur">
     <form onsubmit={submit}>
       <header>

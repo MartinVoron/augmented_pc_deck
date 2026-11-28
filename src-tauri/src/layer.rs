@@ -114,6 +114,54 @@ pub fn attach(window: &gtk::ApplicationWindow, edge: DockEdge) -> bool {
     true
 }
 
+/// Donne à une fenêtre collée la taille `width` × `height` (pixels logiques). Le
+/// layer shell envoie au bureau la taille demandée par GTK, que
+/// `gtk_window_resize` seul ne change pas : sans cela, l'encoche garderait la
+/// taille de la fenêtre normale, invisible mais captant la souris. Sans effet sur
+/// une fenêtre ordinaire. À appeler depuis le fil principal.
+pub fn resize(window: &gtk::ApplicationWindow, width: i32, height: i32) {
+    use gtk::prelude::{GtkWindowExt, WidgetExt};
+    if !is_attached(window) {
+        return;
+    }
+    window.set_size_request(width, height);
+    window.resize(width, height);
+}
+
+/// Appelle `on_change(true)` quand la souris entre dans la fenêtre et
+/// `on_change(false)` quand elle en sort. WebKitGTK ne transmet pas toujours la
+/// sortie à la page sous Wayland : le panneau de l'encoche resterait ouvert.
+/// Les signaux sont posés sur la fenêtre et sur tous ses widgets, car GTK ne
+/// remonte pas ces événements d'un widget à son parent. À appeler depuis le fil
+/// principal.
+pub fn watch_pointer(window: &gtk::ApplicationWindow, on_change: impl Fn(bool) + Clone + 'static) {
+    use gtk::prelude::{Cast, ContainerExt, WidgetExt, WidgetExtManual};
+    fn connect(widget: &gtk::Widget, on_change: &(impl Fn(bool) + Clone + 'static)) {
+        widget.add_events(
+            gtk::gdk::EventMask::ENTER_NOTIFY_MASK | gtk::gdk::EventMask::LEAVE_NOTIFY_MASK,
+        );
+        let on_enter = on_change.clone();
+        widget.connect_enter_notify_event(move |_, _| {
+            on_enter(true);
+            gtk::glib::Propagation::Proceed
+        });
+        let on_leave = on_change.clone();
+        widget.connect_leave_notify_event(move |_, event| {
+            // Passage de la fenêtre à un de ses widgets : la souris est toujours là.
+            if event.detail() != gtk::gdk::NotifyType::Inferior {
+                on_leave(false);
+            }
+            gtk::glib::Propagation::Proceed
+        });
+        if let Some(container) = widget.downcast_ref::<gtk::Container>() {
+            for child in container.children() {
+                connect(&child, on_change);
+            }
+        }
+    }
+    connect(window.upcast_ref(), &on_change);
+}
+
 /// Indique si la fenêtre est passée en layer shell.
 pub fn is_attached(window: &gtk::ApplicationWindow) -> bool {
     use gtk::prelude::Cast;

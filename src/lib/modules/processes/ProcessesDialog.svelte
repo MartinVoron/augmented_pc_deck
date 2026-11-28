@@ -3,6 +3,7 @@
   rafraîchie toutes les 2 secondes. Un processus s'arrête après confirmation.
 -->
 <script lang="ts">
+  import { portal } from "../../actions/portal";
   import { ArrowDown, ArrowUp, Search, Square, X } from "@lucide/svelte";
   import { onMount } from "svelte";
   import {
@@ -81,7 +82,7 @@
   }}
 />
 
-<div class="backdrop">
+<div class="backdrop" use:portal>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="processes-title">
     <header>
       <h2 id="processes-title">Processus</h2>
@@ -188,7 +189,8 @@
     flex-direction: column;
     gap: 0.6rem;
     width: min(44rem, 100%);
-    height: min(36rem, 100%);
+    /* 100 % ne limiterait rien : la grille du fond n'a pas de hauteur fixée. */
+    height: min(36rem, calc(100vh - 2rem));
     padding: 1rem;
     border: 1px solid var(--color-border);
     border-radius: var(--tile-radius);

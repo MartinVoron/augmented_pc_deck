@@ -60,7 +60,7 @@ describe("AppearanceSection", () => {
     expect(savedConfig().appearance?.mode).toBe("light");
   });
 
-  it("affiche le flou en direct et ne l'enregistre qu'au lâcher du curseur", async () => {
+  it("affiche le flou en direct et l'enregistre au lâcher du curseur", async () => {
     render(AppearanceSection);
     await fireEvent.click(screen.getByRole("radio", { name: "Verre" }));
     const saves = () => mockedInvoke.mock.calls.filter(([c]) => c === "settings_save").length;
@@ -86,5 +86,28 @@ describe("AppearanceSection", () => {
     const blur = screen.getByRole("slider", { name: "Flou des tuiles" });
     await fireEvent.change(blur, { target: { value: "0" } });
     await vi.waitFor(() => expect(savedConfig().appearance?.blur).toBe(0));
+  });
+
+  it("enregistre le flou même sans lâcher détecté (WebKitGTK)", async () => {
+    vi.useFakeTimers();
+    try {
+      render(AppearanceSection);
+      await fireEvent.click(screen.getByRole("radio", { name: "Verre" }));
+      const blur = screen.getByRole("slider", { name: "Flou des tuiles" });
+      await fireEvent.input(blur, { target: { value: "40" } });
+      await fireEvent.input(blur, { target: { value: "20" } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(savedConfig().appearance?.blur).toBe(20);
+      expect(blurPreview.value).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("montre un aperçu du flou avec le thème Verre", async () => {
+    const { container } = render(AppearanceSection);
+    expect(container.querySelector(".blur-sample")).toBeNull();
+    await fireEvent.click(screen.getByRole("radio", { name: "Verre" }));
+    expect(container.querySelector(".blur-sample")).not.toBeNull();
   });
 });

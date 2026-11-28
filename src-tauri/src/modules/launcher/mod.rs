@@ -131,10 +131,18 @@ fn spawn(target: &str, program: &Path, args: Vec<String>, dir: Option<&Path>) ->
     if let Some(dir) = dir.filter(|d| !d.as_os_str().is_empty()) {
         command.current_dir(dir);
     }
-    command
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| launch_error(target, e))
+    let mut child = command.spawn().map_err(|e| launch_error(target, e))?;
+    // Attendre la fin du programme : sous Linux, un programme fermé et jamais
+    // attendu reste en processus zombie tant que l'application tourne.
+    let waited = std::thread::Builder::new()
+        .name("attente-programme".into())
+        .spawn(move || {
+            let _ = child.wait();
+        });
+    if let Err(e) = waited {
+        log::warn!("impossible de suivre « {target} » : {e}");
+    }
+    Ok(())
 }
 
 /// Traduit une erreur de lancement en message clair.
@@ -142,7 +150,7 @@ fn launch_error(target: &str, error: std::io::Error) -> AppError {
     match error.kind() {
         std::io::ErrorKind::NotFound => AppError::NotFound(format!("« {target} »")),
         std::io::ErrorKind::PermissionDenied => {
-            AppError::PermissionDenied(format!("Windows refuse d'ouvrir « {target} »"))
+            AppError::PermissionDenied(format!("le système refuse d'ouvrir « {target} »"))
         }
         _ => AppError::Other(format!("impossible d'ouvrir « {target} » : {error}")),
     }

@@ -3,6 +3,7 @@
   Les tuiles du modèle sont déjà placées ; on les range ensuite comme on veut.
 -->
 <script lang="ts">
+  import { portal } from "../actions/portal";
   import { X } from "@lucide/svelte";
   import { KIND_ICONS } from "../grid/icons";
   import { sanitizePages } from "../grid/layout";
@@ -31,7 +32,7 @@
 
 <svelte:window onkeydown={(event) => event.key === "Escape" && onclose()} />
 
-<div class="backdrop">
+<div class="backdrop" use:portal>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="new-page-title">
     <form onsubmit={create}>
       <header>

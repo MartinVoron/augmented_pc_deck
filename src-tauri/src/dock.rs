@@ -317,6 +317,11 @@ struct Inner {
     started: Option<Instant>,
     /// Le bureau a refusé de placer l'encoche (voir [`Placement`]).
     refused: bool,
+    /// La fenêtre principale vient d'être recréée et n'est pas encore affichée.
+    fresh_window: bool,
+    /// La fenêtre principale est en train d'être remplacée : l'application ne
+    /// doit pas se fermer faute de fenêtre (voir [`recreating`]).
+    recreating: bool,
 }
 
 /// Glisser de la fenêtre normale en cours.
@@ -394,37 +399,32 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     };
     let state = app.state::<DockState>();
     let next = settings.dock;
-    let (previous, starting) = {
+    let (previous, fresh) = {
         let mut inner = state.lock();
-        let starting = inner.started.is_none();
+        // Fenêtre jamais affichée : au démarrage, ou recréée (voir `recreate_window`).
+        let fresh = inner.started.is_none() || std::mem::take(&mut inner.fresh_window);
         inner.started.get_or_insert_with(Instant::now);
         inner.dock_on_drag = settings.dock_on_drag;
         if inner.edge != next {
             inner.drag = None;
             inner.ignore_moves_until = Some(Instant::now() + Duration::from_millis(SELF_MOVE_MS));
         }
-        (inner.edge, starting)
+        (inner.edge, fresh)
     };
     if previous == next {
+        if fresh && next == DockEdge::None {
+            let _ = window.show();
+        }
         return next != DockEdge::None;
     }
 
-    // Sous Wayland, seule une fenêtre jamais affichée peut se coller au bord : pour
-    // l'ancrer en cours de route, l'application redémarre (réglage déjà enregistré).
-    if previous == DockEdge::None
-        && next != DockEdge::None
-        && crate::display::native_wayland()
-        && !starting
-    {
-        log::info!("fenêtre ancrée au bord de l'écran : redémarrage de l'application");
-        app.restart();
-    }
-    if next == DockEdge::None && crate::display::native_wayland() {
-        // Une fenêtre collée par le layer shell ne redevient pas une fenêtre
-        // ordinaire : l'application redémarre, en fenêtre normale (réglage déjà
-        // enregistré).
-        log::info!("fenêtre détachée du bord de l'écran : redémarrage de l'application");
-        app.restart();
+    // Sous Wayland, seule une fenêtre jamais affichée peut se coller au bord, et
+    // une fenêtre collée ne redevient pas ordinaire : pour ancrer ou détacher en
+    // cours de route, la fenêtre est remplacée par une neuve.
+    let crosses = (previous == DockEdge::None) != (next == DockEdge::None);
+    if crosses && crate::display::native_wayland() && !fresh {
+        recreate_window(app, settings.clone());
+        return next != DockEdge::None;
     }
     if next == DockEdge::None {
         let restore = {
@@ -438,6 +438,9 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
         let restore = restore.map(|r| keep_visible(&window, r, screen));
         let position = leave_dock(&window, restore, screen);
         state.lock().settled = position;
+        if fresh {
+            let _ = window.show();
+        }
         log::info!("fenêtre détachée du bord de l'écran");
         emit(app, state.lock().status());
         return false;
@@ -474,6 +477,67 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     log::info!("fenêtre ancrée au bord {next:?} de l'écran");
     emit(app, status);
     true
+}
+
+/// Remplace la fenêtre principale par une neuve, masquée, puis applique `settings`
+/// à celle-ci (sous Wayland, pour l'ancrer par le layer shell ou la détacher).
+/// Fait dans un fil à part : la fermeture de l'ancienne fenêtre passe par le fil
+/// principal, qu'il ne faut pas bloquer.
+fn recreate_window<R: Runtime>(app: &AppHandle<R>, settings: WindowSettings) {
+    let app = app.clone();
+    let spawned = thread::Builder::new()
+        .name("nouvelle-fenetre".into())
+        .spawn(move || {
+            let Some(config) = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|w| w.label == MAIN)
+                .cloned()
+            else {
+                log::error!("configuration de la fenêtre principale introuvable");
+                return;
+            };
+            app.state::<DockState>().lock().recreating = true;
+            if let Some(old) = app.get_webview_window(MAIN) {
+                let _ = old.destroy();
+            }
+            // Le nom de la fenêtre n'est libre qu'une fois l'ancienne fermée.
+            for _ in 0..50 {
+                if app.get_webview_window(MAIN).is_none() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(20));
+            }
+            let built = tauri::WebviewWindowBuilder::from_config(&app, &config)
+                .and_then(tauri::WebviewWindowBuilder::build);
+            app.state::<DockState>().lock().recreating = false;
+            match built {
+                Ok(_) => {
+                    log::info!("fenêtre principale recréée");
+                    app.state::<DockState>().lock().fresh_window = true;
+                    // Comme au démarrage, depuis le fil principal : la fenêtre doit
+                    // passer en layer shell avant toute autre opération sur elle.
+                    let handle = app.clone();
+                    if let Err(e) = app.run_on_main_thread(move || {
+                        apply(&handle, &settings);
+                    }) {
+                        log::error!("impossible d'ancrer la nouvelle fenêtre : {e}");
+                    }
+                }
+                Err(e) => log::error!("impossible de recréer la fenêtre principale : {e}"),
+            }
+        });
+    if let Err(e) = spawned {
+        log::error!("impossible de recréer la fenêtre principale : {e}");
+    }
+}
+
+/// Vrai pendant que la fenêtre principale est remplacée : sa fermeture ne doit
+/// pas quitter l'application.
+pub fn recreating<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.state::<DockState>().lock().recreating
 }
 
 /// Retient la taille et la position de la fenêtre normale, sans l'agrandissement.
@@ -587,7 +651,15 @@ fn screen_of<R: Runtime>(window: &WebviewWindow<R>) -> Option<(Rect, f64)> {
         .current_monitor()
         .ok()
         .flatten()
-        .or_else(|| window.primary_monitor().ok().flatten())?;
+        .or_else(|| window.primary_monitor().ok().flatten())
+        // Sous Wayland, une fenêtre pas encore affichée n'a pas d'écran et il n'y a
+        // pas d'écran principal : le premier écran connu fait l'affaire.
+        .or_else(|| {
+            window
+                .available_monitors()
+                .ok()
+                .and_then(|monitors| monitors.into_iter().next())
+        })?;
     let area = monitor.work_area();
     let work = Rect {
         x: area.position.x,
@@ -625,9 +697,18 @@ fn attach_layer<R: Runtime>(window: &WebviewWindow<R>, edge: DockEdge) {
     let target = window.clone();
     // GTK ne s'utilise que depuis le fil principal.
     let result = window.run_on_main_thread(move || {
-        let attached = target
-            .gtk_window()
-            .is_ok_and(|gtk_window| crate::layer::attach(&gtk_window, edge));
+        let gtk_window = target.gtk_window().ok();
+        let attached = gtk_window.as_ref().is_some_and(|gtk_window| {
+            let fresh = !crate::layer::is_attached(gtk_window);
+            let attached = crate::layer::attach(gtk_window, edge);
+            if attached && fresh {
+                let app = target.app_handle().clone();
+                crate::layer::watch_pointer(gtk_window, move |inside| {
+                    app.state::<DockState>().lock().pointer_inside = inside;
+                });
+            }
+            attached
+        });
         if !attached {
             log::warn!("le bureau ne permet pas de coller l'encoche au bord de l'écran");
         }
@@ -705,7 +786,31 @@ fn set_rect<R: Runtime>(window: &WebviewWindow<R>, rect: Rect) {
     if let Err(e) = window.set_size(PhysicalSize::new(rect.width, rect.height)) {
         log::warn!("impossible de redimensionner la fenêtre ancrée : {e}");
     }
+    resize_layer(window, rect);
 }
+
+/// Sous Wayland avec le layer shell, la taille passe aussi par `layer::resize`.
+#[cfg(target_os = "linux")]
+fn resize_layer<R: Runtime>(window: &WebviewWindow<R>, rect: Rect) {
+    if !crate::display::native_wayland() {
+        return;
+    }
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let logical = |px: u32| (f64::from(px) / scale).round() as i32;
+    let (width, height) = (logical(rect.width), logical(rect.height));
+    let target = window.clone();
+    let result = window.run_on_main_thread(move || {
+        if let Ok(gtk_window) = target.gtk_window() {
+            crate::layer::resize(&gtk_window, width, height);
+        }
+    });
+    if let Err(e) = result {
+        log::warn!("impossible de redimensionner l'encoche : {e}");
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn resize_layer<R: Runtime>(_window: &WebviewWindow<R>, _rect: Rect) {}
 
 fn window_rect<R: Runtime>(window: &WebviewWindow<R>) -> Option<Rect> {
     let position = window.outer_position().ok()?;
@@ -847,9 +952,9 @@ pub fn on_moved<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(MAIN) else {
         return;
     };
-    // Sous Wayland, la souris n'est pas connue (elle est lue en 0,0, contre le
-    // bord) : glisser la fenêtre ne peut pas l'ancrer.
-    if crate::display::native_wayland() {
+    // Sous Wayland, même par XWayland, la souris et la fenêtre sont souvent lues
+    // en 0,0, contre le bord : glisser la fenêtre ne peut pas l'ancrer.
+    if crate::display::wayland_session() {
         return;
     }
     let now = Instant::now();
