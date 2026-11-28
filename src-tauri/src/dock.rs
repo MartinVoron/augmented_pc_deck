@@ -847,9 +847,9 @@ pub fn on_moved<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(MAIN) else {
         return;
     };
-    // Sous Wayland, la souris n'est pas connue (elle est lue en 0,0, contre le
-    // bord) : glisser la fenêtre ne peut pas l'ancrer.
-    if crate::display::native_wayland() {
+    // Sous Wayland, même par XWayland, la souris et la fenêtre sont souvent lues
+    // en 0,0, contre le bord : glisser la fenêtre ne peut pas l'ancrer.
+    if crate::display::wayland_session() {
         return;
     }
     let now = Instant::now();
