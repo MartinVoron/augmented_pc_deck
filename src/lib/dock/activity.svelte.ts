@@ -31,12 +31,17 @@ export const live = $state<{ track: NowPlaying | null; runs: TimerRuns }>({
 
 /** Suit le morceau en cours et les minuteurs. Renvoie la fonction d'arrêt. */
 export function watchActivity(): () => void {
+  // Sans lecteur de musique joignable, l'erreur revient à chaque lecture : elle
+  // n'est notée qu'une fois, jusqu'à ce que la lecture remarche.
+  let failing = false;
   const stopPolling = poll(async () => {
     try {
       live.track = await getNowPlaying();
+      failing = false;
     } catch (e) {
       live.track = null;
-      void logError("encoche", e);
+      if (!failing) void logError("encoche", e);
+      failing = true;
     }
   }, MUSIC_POLL_MS);
   const stopTimers = onTimersChanged((runs) => (live.runs = runs));

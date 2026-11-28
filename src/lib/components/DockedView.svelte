@@ -3,11 +3,11 @@
   (boring.notch) ou de la Dynamic Island d'un iPhone.
   - Repliée : une petite encoche noire collée au bord, raccordée à l'écran par deux
     coins creusés (« oreilles »), avec le logo ou entièrement noire.
-  - Souris dessus : le Rust agrandit la fenêtre (transparente) à la taille du panneau,
-    puis l'encoche s'étire jusqu'à lui avec un ressort qui rebondit un peu, et les
-    tuiles apparaissent.
-  - Souris sortie : l'encoche se replie (ressort sans rebond, en moins de
-    CLOSE_ANIMATION_MS du Rust), puis la fenêtre redevient petite.
+  - La fenêtre (transparente) garde toujours la taille du panneau ouvert : seule
+    l'encoche dessinée change de taille, sans redimensionner la fenêtre.
+  - Souris dessus : l'encoche s'étire jusqu'à la taille du panneau avec un ressort
+    qui rebondit un peu, et les tuiles apparaissent.
+  - Souris sortie : l'encoche se replie, avec un ressort sans rebond.
   - Le bouton Détacher remet la fenêtre normale.
   Le suivi de la souris se fait dans le Rust (src-tauri/src/dock.rs).
 -->
@@ -53,16 +53,10 @@
   let activity = $derived(pickActivity(live.track, live.runs));
   let vertical = $derived(dock.edge === "left" || dock.edge === "right");
   let notchLength = $derived(activity && !vertical ? NOTCH_ACTIVE_LENGTH : NOTCH_LENGTH);
-  let sentLength = NOTCH_LENGTH;
+  // Le Rust ouvre le panneau quand la souris s'arrête sur l'encoche : il doit
+  // connaître sa longueur.
   $effect(() => {
-    const length = notchLength;
-    // Pour rétrécir, la fenêtre attend que l'encoche ait fini de se replier.
-    const delay = length < sentLength ? 300 : 0;
-    const id = setTimeout(() => {
-      sentLength = length;
-      setDockNotch(length).catch((e: unknown) => logError("ancrage", e));
-    }, delay);
-    return () => clearTimeout(id);
+    setDockNotch(notchLength).catch((e: unknown) => logError("ancrage", e));
   });
 
   let folded = $derived(foldedSize(dock.edge, notchLength));
