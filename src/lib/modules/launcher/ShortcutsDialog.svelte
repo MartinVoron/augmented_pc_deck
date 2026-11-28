@@ -1,7 +1,7 @@
 <!--
   Fenêtre de gestion des raccourcis d'une tuile du lanceur : ajouter, modifier,
   réordonner et supprimer. La cible se choisit avec le sélecteur de Windows,
-  en la tapant (URL) ou en déposant un fichier depuis l'Explorateur.
+  en la tapant (URL) ou en déposant un fichier depuis le gestionnaire de fichiers.
 -->
 <script lang="ts">
   import { portal } from "../../actions/portal";
@@ -139,7 +139,7 @@
           <button type="button" onclick={() => chooseTarget("folder")}>
             <Folder size={14} /> Dossier…
           </button>
-          <span class="hint">ou glissez un fichier depuis l'Explorateur</span>
+          <span class="hint">ou glissez un fichier depuis le gestionnaire de fichiers</span>
         </div>
 
         <label>
@@ -178,7 +178,8 @@
     {:else}
       {#if shortcuts.length === 0}
         <p class="hint">
-          Aucun raccourci. Ajoutez-en un, ou glissez ici des fichiers depuis l'Explorateur.
+          Aucun raccourci. Ajoutez-en un, ou glissez ici des fichiers depuis le gestionnaire de
+          fichiers.
         </p>
       {:else}
         <ul>
