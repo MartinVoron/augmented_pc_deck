@@ -298,7 +298,7 @@
 
   .error {
     margin: 0.3rem 0 0;
-    color: #f1c4c4;
+    color: var(--color-danger-text);
     font-size: 0.75rem;
   }
 </style>

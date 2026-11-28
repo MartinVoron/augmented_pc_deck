@@ -335,6 +335,6 @@
 
   .error {
     margin: 0;
-    color: #f1c4c4;
+    color: var(--color-danger-text);
   }
 </style>

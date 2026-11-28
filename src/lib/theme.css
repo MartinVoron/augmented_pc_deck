@@ -22,6 +22,12 @@
   --color-danger: #ff5c5c;
   --color-purple: #bf5af2;
 
+  /* Messages d'erreur et de réussite (fond et texte) */
+  --color-danger-bg: #2a1a1a;
+  --color-danger-text: #f1c4c4;
+  --color-success-bg: #1a2a1f;
+  --color-success-text: #bfe8c9;
+
   /* Grille de tuiles */
   --tile-unit: 140px;
   --tile-gap: 12px;

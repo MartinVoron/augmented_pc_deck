@@ -39,8 +39,8 @@
     padding: 0.75rem;
     border: 1px solid #5c2b2b;
     border-radius: 0.5rem;
-    background: #2a1a1a;
-    color: #f1c4c4;
+    background: var(--color-danger-bg);
+    color: var(--color-danger-text);
   }
 
   .title {

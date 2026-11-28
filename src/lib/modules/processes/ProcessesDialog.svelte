@@ -341,13 +341,13 @@
     margin: 0;
     padding: 0.35rem 0.6rem;
     border-radius: 0.375rem;
-    background: #1a2a1f;
-    color: #bfe8c9;
+    background: var(--color-success-bg);
+    color: var(--color-success-text);
   }
 
   .message[data-kind="error"] {
-    background: #2a1a1a;
-    color: #f1c4c4;
+    background: var(--color-danger-bg);
+    color: var(--color-danger-text);
   }
 
   .count {

@@ -294,7 +294,7 @@
 
   .control-error {
     grid-area: message;
-    color: #f1c4c4;
+    color: var(--color-danger-text);
     font-size: 0.72rem;
   }
 
@@ -310,6 +310,6 @@
   }
 
   .error {
-    color: #f1c4c4;
+    color: var(--color-danger-text);
   }
 </style>
