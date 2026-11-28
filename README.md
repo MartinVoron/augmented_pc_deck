@@ -170,6 +170,13 @@ l'encoche d'un MacBook ou la Dynamic Island d'un iPhone :
   Wayland ne laisse pas une application se placer au bord de l'écran ni suivre la souris.
   Avec un zoom fractionnaire (125 %, 150 %), le rendu peut être un peu flou. Pour garder
   Wayland malgré tout, lancer l'application avec `GDK_BACKEND=wayland`.
+- **Si le bureau refuse de placer l'encoche** contre le bord (COSMIC, Weston…), la
+  fenêtre revient d'elle-même en mode normal, avec un message. Le menu de l'icône de la
+  zone de notification a aussi une entrée « Détacher l'encoche ».
+- **Essai expérimental** pour COSMIC, KDE, Sway ou Hyprland : avec la bibliothèque
+  `libgtk-layer-shell0` installée, lancer l'application avec
+  `AUGMENTED_PC_DECK_LAYER_SHELL=1` colle l'encoche au bord par le protocole des docks
+  (« layer shell »). Ancrer ou détacher la fenêtre redémarre alors l'application.
 
 ## Jetons de connexion
 
