@@ -3,22 +3,24 @@
   Chaque changement est enregistré et appliqué tout de suite.
 -->
 <script lang="ts">
-  import { Settings, X } from "@lucide/svelte";
+  import { Palette, Settings, X } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { KIND_ICONS } from "../../grid/icons";
   import type { TileKind } from "../../grid/defaultLayout";
   import ClaudeSection from "../claude/ClaudeSection.svelte";
   import GithubSection from "../github/GithubSection.svelte";
   import GmailSection from "../gmail/GmailSection.svelte";
+  import AppearanceSection from "./AppearanceSection.svelte";
   import GeneralSection from "./GeneralSection.svelte";
   import { settings } from "./state.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
 
-  type SectionId = "general" | TileKind;
+  type SectionId = "general" | "appearance" | TileKind;
 
   const sections: { id: SectionId; label: string; icon: Component }[] = [
     { id: "general", label: "Général", icon: Settings },
+    { id: "appearance", label: "Apparence", icon: Palette },
     { id: "launcher", label: "Raccourcis", icon: KIND_ICONS.launcher },
     { id: "processes", label: "Processus", icon: KIND_ICONS.processes },
     { id: "timers", label: "Minuteurs", icon: KIND_ICONS.timers },
@@ -64,6 +66,8 @@
 
       {#if current === "general"}
         <GeneralSection />
+      {:else if current === "appearance"}
+        <AppearanceSection />
       {:else if current === "github"}
         <GithubSection />
       {:else if current === "gmail"}
