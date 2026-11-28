@@ -1,4 +1,5 @@
 // Paramètres : lecture et enregistrement de la configuration (voir src-tauri/src/modules/settings).
+import type { DockEdge, NotchStyle } from "../../dock";
 import { call } from "../../tauri";
 import type { Shortcut } from "../launcher";
 import type { TimerSettings } from "../timers";
@@ -49,6 +50,10 @@ export interface Config {
     /** Fenêtre toujours au-dessus des autres. */
     alwaysOnTop: boolean;
     fullscreen: boolean;
+    /** Bord où la fenêtre est ancrée en encoche (absent d'une ancienne configuration). */
+    dock?: DockEdge;
+    /** Apparence de l'encoche repliée. */
+    notchStyle?: NotchStyle;
   };
   layout: {
     /** Pages de tuiles, dans l'ordre des onglets. */
