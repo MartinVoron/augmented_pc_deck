@@ -319,6 +319,9 @@ struct Inner {
     refused: bool,
     /// La fenêtre principale vient d'être recréée et n'est pas encore affichée.
     fresh_window: bool,
+    /// La fenêtre principale est en train d'être remplacée : l'application ne
+    /// doit pas se fermer faute de fenêtre (voir [`recreating`]).
+    recreating: bool,
 }
 
 /// Glisser de la fenêtre normale en cours.
@@ -496,6 +499,7 @@ fn recreate_window<R: Runtime>(app: &AppHandle<R>, settings: WindowSettings) {
                 log::error!("configuration de la fenêtre principale introuvable");
                 return;
             };
+            app.state::<DockState>().lock().recreating = true;
             if let Some(old) = app.get_webview_window(MAIN) {
                 let _ = old.destroy();
             }
@@ -506,9 +510,10 @@ fn recreate_window<R: Runtime>(app: &AppHandle<R>, settings: WindowSettings) {
                 }
                 thread::sleep(Duration::from_millis(20));
             }
-            match tauri::WebviewWindowBuilder::from_config(&app, &config)
-                .and_then(tauri::WebviewWindowBuilder::build)
-            {
+            let built = tauri::WebviewWindowBuilder::from_config(&app, &config)
+                .and_then(tauri::WebviewWindowBuilder::build);
+            app.state::<DockState>().lock().recreating = false;
+            match built {
                 Ok(_) => {
                     log::info!("fenêtre principale recréée");
                     app.state::<DockState>().lock().fresh_window = true;
@@ -520,6 +525,12 @@ fn recreate_window<R: Runtime>(app: &AppHandle<R>, settings: WindowSettings) {
     if let Err(e) = spawned {
         log::error!("impossible de recréer la fenêtre principale : {e}");
     }
+}
+
+/// Vrai pendant que la fenêtre principale est remplacée : sa fermeture ne doit
+/// pas quitter l'application.
+pub fn recreating<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.state::<DockState>().lock().recreating
 }
 
 /// Retient la taille et la position de la fenêtre normale, sans l'agrandissement.

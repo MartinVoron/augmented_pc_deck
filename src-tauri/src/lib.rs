@@ -108,6 +108,16 @@ pub fn run() {
             claude::start(app.handle());
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("impossible de démarrer l'application");
+        .build(tauri::generate_context!())
+        .expect("impossible de démarrer l'application")
+        .run(|app, event| {
+            // Fermer la seule fenêtre quitte l'application, sauf pendant son
+            // remplacement (encoche sous Wayland). « Quitter » donne un code et
+            // n'est pas bloqué.
+            if let tauri::RunEvent::ExitRequested { code: None, api, .. } = event {
+                if dock::recreating(app) {
+                    api.prevent_exit();
+                }
+            }
+        });
 }
