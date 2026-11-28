@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Check, LayoutGrid, Settings } from "@lucide/svelte";
+  import { syncAppearance, watchSystemScheme } from "./lib/appearance/state.svelte";
   import Dashboard from "./lib/components/Dashboard.svelte";
   import DockedView from "./lib/components/DockedView.svelte";
   import { dock, watchDock } from "./lib/dock/state.svelte";
@@ -30,6 +31,9 @@
   // Ancrée sur un bord de l'écran, la fenêtre devient une encoche (voir DockedView).
   let docked = $derived(dock.edge !== "none");
   $effect(() => watchDock());
+  // Thème choisi dans les paramètres, clair ou sombre selon Windows si demandé.
+  $effect(() => watchSystemScheme());
+  $effect(() => syncAppearance(docked));
   $effect(() => {
     // Fond transparent : seule l'encoche dessinée se voit.
     document.documentElement.toggleAttribute("data-docked", docked);
@@ -119,8 +123,8 @@
     gap: 0.35rem;
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    background: transparent;
+    border-radius: var(--button-radius);
+    background: var(--button-bg);
     color: var(--color-text-muted);
     font: inherit;
     cursor: pointer;
