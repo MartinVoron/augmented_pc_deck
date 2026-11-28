@@ -151,6 +151,22 @@ Les réglages et la disposition des tuiles sont enregistrés dans
   un clic sur l'icône affiche la fenêtre (sous Linux, un clic ouvre le menu). Pour arrêter vraiment l'application, utiliser
   Quitter.
 
+### Encoche au bord de l'écran
+
+La fenêtre peut se ranger contre un bord de l'écran (haut, bas, gauche ou droite), comme
+l'encoche d'un MacBook ou la Dynamic Island d'un iPhone :
+
+- **Pour l'ancrer** : lâcher la fenêtre en la tenant par sa barre de titre, la souris
+  collée à un bord de l'écran, ou choisir le bord dans Paramètres > Général > Encoche.
+- **Repliée**, ce n'est plus qu'une petite encoche noire, avec le logo ou entièrement
+  noire (réglage « Encoche repliée »), toujours au premier plan.
+- **Au survol** de la souris, elle s'ouvre avec une animation et montre les tuiles de la
+  page affichée. Elle se replie quand la souris s'en va.
+- **Pour la détacher** : bouton Détacher (icône d'une fenêtre dans une fenêtre) en haut à
+  droite du panneau ouvert. La fenêtre reprend sa taille et sa place d'avant.
+- L'ancrage en glissant se coupe dans les paramètres (« Ancrer en lâchant la fenêtre
+  contre un bord »).
+
 ## Jetons de connexion
 
 Les jetons GitHub, Gmail et Claude ne sont jamais écrits dans un fichier de l'application

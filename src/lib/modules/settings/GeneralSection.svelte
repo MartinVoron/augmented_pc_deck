@@ -1,6 +1,7 @@
 <!-- Section « Général » : langue et notifications. -->
 <script lang="ts">
   import Toggle from "../../components/Toggle.svelte";
+  import { DOCK_EDGE_LABELS, type DockEdge, type NotchStyle } from "../../dock";
   import { sendNotification } from "../../notifications";
   import { getAutostart, setAutostart } from ".";
   import { settings, updateSettings } from "./state.svelte";
@@ -77,6 +78,44 @@
     onchange={(enabled) => updateSettings((config) => (config.window.fullscreen = enabled))}
   />
   <p class="hint">La taille, la position et l'écran de la fenêtre sont retenus automatiquement.</p>
+
+  <h3>Encoche</h3>
+  <label class="field">
+    <span>Ancrer au bord de l'écran</span>
+    <select
+      value={settings.config.window.dock ?? "none"}
+      onchange={(event) => {
+        const edge = event.currentTarget.value as DockEdge;
+        void updateSettings((config) => (config.window.dock = edge));
+      }}
+    >
+      {#each Object.entries(DOCK_EDGE_LABELS) as [edge, label] (edge)}
+        <option value={edge}>{label}</option>
+      {/each}
+    </select>
+  </label>
+  <label class="field">
+    <span>Encoche repliée</span>
+    <select
+      value={settings.config.window.notchStyle ?? "logo"}
+      onchange={(event) => {
+        const style = event.currentTarget.value as NotchStyle;
+        void updateSettings((config) => (config.window.notchStyle = style));
+      }}
+    >
+      <option value="logo">Noire avec le logo</option>
+      <option value="black">Entièrement noire</option>
+    </select>
+  </label>
+  <Toggle
+    label="Ancrer en lâchant la fenêtre contre un bord"
+    checked={settings.config.window.dockOnDrag ?? true}
+    onchange={(enabled) => updateSettings((config) => (config.window.dockOnDrag = enabled))}
+  />
+  <p class="hint">
+    Ancrée, la fenêtre devient une petite encoche au bord de l'écran, toujours visible. Passez la
+    souris dessus pour voir vos tuiles ; le bouton Détacher remet la fenêtre normale.
+  </p>
 
   <h3>Démarrage</h3>
   <Toggle

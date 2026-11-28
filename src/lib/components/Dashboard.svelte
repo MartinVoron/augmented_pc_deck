@@ -27,8 +27,15 @@
   import TileContent from "./TileContent.svelte";
   import TileGrid from "./TileGrid.svelte";
 
-  /** `pageId` : page affichée (l'écran d'accueil si absente ou inconnue). */
-  let { editing = false, pageId }: { editing?: boolean; pageId?: string } = $props();
+  /**
+   * `pageId` : page affichée (l'écran d'accueil si absente ou inconnue).
+   * `columns` : nombre de colonnes fixe (panneau de la fenêtre ancrée).
+   */
+  let {
+    editing = false,
+    pageId,
+    columns,
+  }: { editing?: boolean; pageId?: string; columns?: number } = $props();
 
   let pages = $derived(sanitizePages(settings.config?.layout.pages));
   let page = $derived(pageToShow(pages, pageId));
@@ -60,7 +67,7 @@
   }
 </script>
 
-<TileGrid>
+<TileGrid {columns}>
   {#each tiles as tile, index (tile.id)}
     <Tile
       title={tile.title}
