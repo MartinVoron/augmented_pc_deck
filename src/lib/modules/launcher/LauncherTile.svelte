@@ -156,8 +156,8 @@
     margin: 0;
     padding: 0.3rem 0.5rem;
     border-radius: 0.375rem;
-    background: #2a1a1a;
-    color: #f1c4c4;
+    background: var(--color-danger-bg);
+    color: var(--color-danger-text);
     font-size: 0.75rem;
     line-height: 1.3;
   }

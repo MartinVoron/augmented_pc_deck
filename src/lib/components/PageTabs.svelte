@@ -200,6 +200,9 @@
     flex-wrap: wrap;
     gap: 0.25rem;
     min-width: 0;
+    padding: var(--tabs-padding);
+    border-radius: var(--tabs-radius);
+    background: var(--tabs-bg);
   }
 
   [role="tab"],
@@ -209,7 +212,7 @@
     gap: 0.35rem;
     padding: 0.35rem 0.8rem;
     border: 1px solid transparent;
-    border-radius: 999px;
+    border-radius: var(--tab-radius);
     background: transparent;
     color: var(--color-text-muted);
     font: inherit;
@@ -219,12 +222,13 @@
 
   [role="tab"]:hover {
     color: var(--color-text);
-    background: var(--color-surface);
+    background: var(--tab-hover-bg);
   }
 
   [role="tab"][aria-selected="true"] {
-    border-color: var(--color-border);
-    background: var(--color-surface);
+    border-color: var(--tab-active-border);
+    background: var(--tab-active-bg);
+    box-shadow: var(--tab-active-shadow);
     color: var(--color-text);
     font-weight: 600;
   }

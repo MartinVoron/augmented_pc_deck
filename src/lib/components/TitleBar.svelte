@@ -64,8 +64,8 @@
     flex-shrink: 0;
     height: 2.25rem;
     padding: 0 0.75rem;
-    background: var(--color-bg);
-    border-bottom: 1px solid var(--color-border);
+    background: var(--titlebar-bg);
+    border-bottom: 1px solid var(--titlebar-border);
     user-select: none;
     -webkit-user-select: none;
   }

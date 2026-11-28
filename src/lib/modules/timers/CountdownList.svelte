@@ -244,7 +244,7 @@
 
   .error {
     margin-top: 0.3rem;
-    color: #f1c4c4;
+    color: var(--color-danger-text);
     font-size: 0.75rem;
   }
 </style>
