@@ -48,7 +48,7 @@ pub const OPEN_DELAY_MS: u64 = 80;
 pub const CLOSE_DELAY_MS: u64 = 300;
 /// Durée de l'animation de fermeture dans l'interface (`DockedView.svelte`) : la
 /// fenêtre ne rapetisse qu'après, pour ne pas couper l'animation.
-const CLOSE_ANIMATION_MS: u64 = 260;
+const CLOSE_ANIMATION_MS: u64 = 300;
 
 /// Distance au bord de l'écran, en pixels physiques, à laquelle lâcher la fenêtre l'ancre.
 pub const DRAG_EDGE_MARGIN: f64 = 3.0;
