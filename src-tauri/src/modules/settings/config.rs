@@ -58,7 +58,7 @@ impl Default for GeneralSettings {
 
 /// Options d'affichage de la fenêtre. Sa taille et sa position sont retenues à part,
 /// par le plugin `window-state` (fichier `.window-state.json`).
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct WindowSettings {
     /// Fenêtre toujours au-dessus des autres.
@@ -69,6 +69,20 @@ pub struct WindowSettings {
     pub dock: DockEdge,
     /// Apparence de l'encoche quand la fenêtre ancrée est repliée.
     pub notch_style: NotchStyle,
+    /// Lâcher la fenêtre avec la souris contre un bord de l'écran l'y ancre.
+    pub dock_on_drag: bool,
+}
+
+impl Default for WindowSettings {
+    fn default() -> Self {
+        Self {
+            always_on_top: false,
+            fullscreen: false,
+            dock: DockEdge::None,
+            notch_style: NotchStyle::Logo,
+            dock_on_drag: true,
+        }
+    }
 }
 
 /// Bord de l'écran où la fenêtre est ancrée. Une valeur inconnue revient à `none`.
@@ -462,6 +476,7 @@ mod tests {
         let old = parse(r#"{ "version": 3, "window": { "alwaysOnTop": true } }"#).unwrap();
         assert_eq!(old.window.dock, DockEdge::None);
         assert_eq!(old.window.notch_style, NotchStyle::Logo);
+        assert!(old.window.dock_on_drag);
         let odd =
             parse(r#"{ "version": 3, "window": { "dock": "milieu", "notchStyle": "rose" } }"#)
                 .unwrap();

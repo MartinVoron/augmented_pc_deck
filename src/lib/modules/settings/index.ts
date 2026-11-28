@@ -54,6 +54,8 @@ export interface Config {
     dock?: DockEdge;
     /** Apparence de l'encoche repliée. */
     notchStyle?: NotchStyle;
+    /** Lâcher la fenêtre contre un bord de l'écran l'y ancre (oui si absent). */
+    dockOnDrag?: boolean;
   };
   layout: {
     /** Pages de tuiles, dans l'ordre des onglets. */

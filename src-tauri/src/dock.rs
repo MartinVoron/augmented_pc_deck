@@ -8,10 +8,13 @@
 //! dessinée par l'interface se voit.
 //!
 //! L'interface est prévenue de chaque changement par l'événement [`EVENT`].
+//!
+//! Lâcher la fenêtre normale avec la souris collée à un bord de l'écran l'ancre à
+//! ce bord (réglage `window.dockOnDrag`), voir [`on_moved`].
 
 use std::sync::{Mutex, MutexGuard};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{
@@ -21,6 +24,7 @@ use tauri::{
 
 use crate::error::{AppError, AppResult};
 use crate::modules::settings::config::{DockEdge, WindowSettings};
+use crate::modules::settings::ConfigStore;
 use crate::window::MAIN;
 
 /// Événement envoyé à l'interface à chaque changement (bord, ouverture).
@@ -45,6 +49,13 @@ pub const CLOSE_DELAY_MS: u64 = 300;
 /// Durée de l'animation de fermeture dans l'interface (`DockedView.svelte`) : la
 /// fenêtre ne rapetisse qu'après, pour ne pas couper l'animation.
 const CLOSE_ANIMATION_MS: u64 = 260;
+
+/// Distance au bord de l'écran, en pixels physiques, à laquelle lâcher la fenêtre l'ancre.
+pub const DRAG_EDGE_MARGIN: f64 = 3.0;
+/// Temps sans mouvement après lequel un glisser de fenêtre est considéré fini.
+const DRAG_QUIET_MS: u64 = 250;
+/// Temps pendant lequel les déplacements faits par l'ancrage lui-même sont ignorés.
+const SELF_MOVE_MS: u64 = 800;
 
 /// Rectangle à l'écran, en pixels physiques.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,6 +101,28 @@ pub fn fit(work: Rect, edge: DockEdge, width: u32, height: u32) -> Rect {
         width,
         height,
     }
+}
+
+/// Bord de l'écran `monitor` contre lequel se trouve la souris (à `margin` pixels
+/// près), ou `DockEdge::None`. Dans un coin, le bord le plus proche l'emporte ; à
+/// égalité, le haut ou le bas.
+pub fn edge_at(monitor: Rect, x: f64, y: f64, margin: f64) -> DockEdge {
+    if !monitor.contains(x, y) {
+        return DockEdge::None;
+    }
+    let right = f64::from(monitor.x) + f64::from(monitor.width) - 1.0;
+    let bottom = f64::from(monitor.y) + f64::from(monitor.height) - 1.0;
+    let distances = [
+        (DockEdge::Top, y - f64::from(monitor.y)),
+        (DockEdge::Bottom, bottom - y),
+        (DockEdge::Left, x - f64::from(monitor.x)),
+        (DockEdge::Right, right - x),
+    ];
+    distances
+        .into_iter()
+        .filter(|(_, distance)| *distance <= margin)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map_or(DockEdge::None, |(edge, _)| edge)
 }
 
 /// Taille de l'encoche en pixels physiques : couchée sur les bords haut et bas,
@@ -171,6 +204,22 @@ struct Inner {
     restore: Option<Restore>,
     /// Change à chaque ancrage ou détachement : arrête le suivi de souris précédent.
     generation: u64,
+    /// Réglage `window.dockOnDrag`.
+    dock_on_drag: bool,
+    /// Glisser de la fenêtre normale en cours.
+    drag: Option<Drag>,
+    /// Taille et position d'avant le dernier glisser, à retenir si celui-ci ancre la
+    /// fenêtre (Windows a pu l'« aimanter » entre-temps).
+    drag_restore: Option<Restore>,
+    /// Jusqu'à quand ignorer les déplacements faits par l'ancrage lui-même.
+    ignore_moves_until: Option<Instant>,
+}
+
+/// Glisser de la fenêtre normale en cours.
+#[derive(Debug, Clone, Copy)]
+struct Drag {
+    last_move: Instant,
+    start: Option<Restore>,
 }
 
 impl Inner {
@@ -218,7 +267,15 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     };
     let state = app.state::<DockState>();
     let next = settings.dock;
-    let previous = state.lock().edge;
+    let previous = {
+        let mut inner = state.lock();
+        inner.dock_on_drag = settings.dock_on_drag;
+        if inner.edge != next {
+            inner.drag = None;
+            inner.ignore_moves_until = Some(Instant::now() + Duration::from_millis(SELF_MOVE_MS));
+        }
+        inner.edge
+    };
     if previous == next {
         return next != DockEdge::None;
     }
@@ -239,11 +296,11 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     }
 
     let generation = if previous == DockEdge::None {
-        let restore = capture(&window);
+        let captured = capture(&window);
         let screen = screen_of(&window);
         enter_dock(&window);
         let mut inner = state.lock();
-        inner.restore = restore;
+        inner.restore = inner.drag_restore.take().or(captured);
         inner.screen = screen;
         inner.generation += 1;
         Some(inner.generation)
@@ -265,6 +322,20 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     log::info!("fenêtre ancrée au bord {next:?} de l'écran");
     emit(app, status);
     true
+}
+
+/// Retient la taille et la position de la fenêtre normale, sans l'agrandissement.
+fn current_geometry<R: Runtime>(window: &WebviewWindow<R>) -> Option<Restore> {
+    if window.is_maximized().unwrap_or(false) {
+        return None;
+    }
+    let position = window.outer_position().ok()?;
+    let size = window.outer_size().ok()?;
+    Some(Restore {
+        position,
+        size,
+        maximized: false,
+    })
 }
 
 /// Retient la taille et la position de la fenêtre normale. Une fenêtre plus petite
@@ -478,6 +549,111 @@ fn watch<R: Runtime>(app: AppHandle<R>, generation: u64) {
     }
 }
 
+/// La fenêtre principale a bougé. Si c'est l'utilisateur qui la glisse (fenêtre
+/// normale, réglage actif), on attend la fin du glisser : bouton de la souris lâché
+/// et plus de mouvement. Si la souris est alors collée à un bord de l'écran, la
+/// fenêtre s'ancre à ce bord, et le réglage est enregistré.
+pub fn on_moved<R: Runtime>(app: &AppHandle<R>) {
+    let Some(window) = app.get_webview_window(MAIN) else {
+        return;
+    };
+    let now = Instant::now();
+    let state = app.state::<DockState>();
+    {
+        let mut inner = state.lock();
+        let ignored = inner.ignore_moves_until.is_some_and(|until| now < until);
+        if inner.edge != DockEdge::None || !inner.dock_on_drag || ignored {
+            return;
+        }
+        if let Some(drag) = inner.drag.as_mut() {
+            drag.last_move = now;
+            return;
+        }
+    }
+    // Premier mouvement d'un glisser : on retient la fenêtre telle qu'elle était.
+    let start = current_geometry(&window);
+    state.lock().drag = Some(Drag {
+        last_move: now,
+        start,
+    });
+    let app = app.clone();
+    let spawned = thread::Builder::new()
+        .name("glisser-fenetre".into())
+        .spawn(move || loop {
+            thread::sleep(Duration::from_millis(POLL_MS * 2));
+            let state = app.state::<DockState>();
+            let drag = {
+                let mut inner = state.inner().lock();
+                let Some(drag) = inner.drag else {
+                    return;
+                };
+                let quiet = drag.last_move.elapsed() >= Duration::from_millis(DRAG_QUIET_MS);
+                if !quiet || mouse_button_down() {
+                    continue;
+                }
+                inner.drag = None;
+                drag
+            };
+            finish_drag(&app, drag);
+            return;
+        });
+    if let Err(e) = spawned {
+        log::warn!("impossible de suivre le glisser de la fenêtre : {e}");
+        state.lock().drag = None;
+    }
+}
+
+/// Fin d'un glisser : ancre la fenêtre si la souris est contre un bord de l'écran.
+fn finish_drag<R: Runtime>(app: &AppHandle<R>, drag: Drag) {
+    let Ok(cursor) = app.cursor_position() else {
+        return;
+    };
+    let Ok(Some(monitor)) = app.monitor_from_point(cursor.x, cursor.y) else {
+        return;
+    };
+    let bounds = Rect {
+        x: monitor.position().x,
+        y: monitor.position().y,
+        width: monitor.size().width,
+        height: monitor.size().height,
+    };
+    let edge = edge_at(bounds, cursor.x, cursor.y, DRAG_EDGE_MARGIN);
+    if edge == DockEdge::None {
+        return;
+    }
+    let store = app.state::<ConfigStore>();
+    let mut config = store.get();
+    if config.window.dock != DockEdge::None {
+        return;
+    }
+    config.window.dock = edge;
+    match store.set(config) {
+        Ok(saved) => {
+            app.state::<DockState>().lock().drag_restore = drag.start;
+            log::info!("fenêtre lâchée contre le bord {edge:?} de l'écran");
+            apply(app, &saved.window);
+        }
+        Err(e) => log::error!("ancrage après un glisser impossible : {e}"),
+    }
+}
+
+/// Indique si un bouton de la souris est enfoncé (un glisser est encore en cours).
+/// Seul Windows le dit ; ailleurs, la fin du mouvement suffit.
+#[cfg(windows)]
+fn mouse_button_down() -> bool {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON};
+    // Le bit de poids fort indique un bouton enfoncé. Boutons physiques : les deux
+    // sont vérifiés, pour les souris inversées des gauchers.
+    // SAFETY : simple lecture de l'état du clavier et de la souris, sans pointeur.
+    let down = |key: u16| unsafe { GetAsyncKeyState(i32::from(key)) } < 0;
+    down(VK_LBUTTON.0) || down(VK_RBUTTON.0)
+}
+
+#[cfg(not(windows))]
+fn mouse_button_down() -> bool {
+    false
+}
+
 /// État actuel de l'ancrage.
 #[tauri::command]
 pub fn dock_status(state: State<'_, DockState>) -> DockStatus {
@@ -634,6 +810,41 @@ mod tests {
         }
         assert_eq!(closed, Some(false));
         assert!(!hover.expanded);
+    }
+
+    #[test]
+    fn dropping_against_an_edge_finds_that_edge() {
+        let m = DRAG_EDGE_MARGIN;
+        assert_eq!(edge_at(SCREEN, 960.0, 0.0, m), DockEdge::Top);
+        assert_eq!(edge_at(SCREEN, 960.0, 2.0, m), DockEdge::Top);
+        assert_eq!(edge_at(SCREEN, 960.0, 1039.0, m), DockEdge::Bottom);
+        assert_eq!(edge_at(SCREEN, 0.0, 500.0, m), DockEdge::Left);
+        assert_eq!(edge_at(SCREEN, 1919.0, 500.0, m), DockEdge::Right);
+        // Loin des bords, ou hors de l'écran : rien.
+        assert_eq!(edge_at(SCREEN, 960.0, 20.0, m), DockEdge::None);
+        assert_eq!(edge_at(SCREEN, 1920.0, 500.0, m), DockEdge::None);
+    }
+
+    #[test]
+    fn corners_go_to_the_nearest_edge() {
+        let m = DRAG_EDGE_MARGIN;
+        assert_eq!(edge_at(SCREEN, 0.0, 0.0, m), DockEdge::Top);
+        assert_eq!(edge_at(SCREEN, 0.0, 2.0, m), DockEdge::Left);
+        assert_eq!(edge_at(SCREEN, 1918.0, 1039.0, m), DockEdge::Bottom);
+    }
+
+    #[test]
+    fn edges_of_a_second_screen_are_found() {
+        let second = Rect {
+            x: -1280,
+            y: -200,
+            width: 1280,
+            height: 1024,
+        };
+        let m = DRAG_EDGE_MARGIN;
+        assert_eq!(edge_at(second, -640.0, -200.0, m), DockEdge::Top);
+        assert_eq!(edge_at(second, -1.0, 300.0, m), DockEdge::Right);
+        assert_eq!(edge_at(second, -1280.0, 300.0, m), DockEdge::Left);
     }
 
     #[test]
