@@ -57,4 +57,20 @@ describe("App", () => {
 
     expect(await screen.findByText(/pas joignable : pas de réponse/)).toBeTruthy();
   });
+
+  it("devient une encoche quand la fenêtre est ancrée", async () => {
+    mockedInvoke.mockImplementation((command) =>
+      command === "dock_status"
+        ? Promise.resolve({ edge: "bottom", expanded: false })
+        : backendOk(command),
+    );
+
+    render(App);
+
+    await vi.waitFor(() =>
+      expect(document.querySelector(".dock[data-edge='bottom']")).toBeTruthy(),
+    );
+    expect(document.documentElement.hasAttribute("data-docked")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Ouvrir les paramètres" })).toBeNull();
+  });
 });

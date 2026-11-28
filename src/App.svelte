@@ -1,6 +1,8 @@
 <script lang="ts">
   import { Check, LayoutGrid, Settings } from "@lucide/svelte";
   import Dashboard from "./lib/components/Dashboard.svelte";
+  import DockedView from "./lib/components/DockedView.svelte";
+  import { dock, watchDock } from "./lib/dock/state.svelte";
   import PageTabs from "./lib/components/PageTabs.svelte";
   import { pageToShow, sanitizePages } from "./lib/grid/layout";
   import TitleBar from "./lib/components/TitleBar.svelte";
@@ -24,50 +26,62 @@
     .catch((e: Error) => (error = e.message));
 
   void loadSettings();
+
+  // Ancrée sur un bord de l'écran, la fenêtre devient une encoche (voir DockedView).
+  let docked = $derived(dock.edge !== "none");
+  $effect(() => watchDock());
+  $effect(() => {
+    // Fond transparent : seule l'encoche dessinée se voit.
+    document.documentElement.toggleAttribute("data-docked", docked);
+  });
 </script>
 
-<div class="window">
-  <TitleBar />
-  <div class="content">
-    {#if showSettings}
-      <SettingsScreen onclose={() => (showSettings = false)} />
-    {:else}
-      <main>
-        {#if editing || pages.length > 1}
-          <PageTabs currentId={currentPageId} {editing} onselect={(id) => (pageId = id)} />
-        {/if}
-        <Dashboard {editing} pageId={currentPageId} />
+{#if docked}
+  <DockedView pageId={currentPageId} onselect={(id) => (pageId = id)} />
+{:else}
+  <div class="window">
+    <TitleBar />
+    <div class="content">
+      {#if showSettings}
+        <SettingsScreen onclose={() => (showSettings = false)} />
+      {:else}
+        <main>
+          {#if editing || pages.length > 1}
+            <PageTabs currentId={currentPageId} {editing} onselect={(id) => (pageId = id)} />
+          {/if}
+          <Dashboard {editing} pageId={currentPageId} />
 
-        <footer>
-          <span>
-            {#if version}
-              Augmented PC Deck {version}
-            {:else if error}
-              Le moteur Tauri n'est pas joignable : {error}
-            {/if}
-          </span>
-          <span class="buttons">
-            <button type="button" aria-pressed={editing} onclick={() => (editing = !editing)}>
-              {#if editing}
-                <Check size={16} /> Terminé
-              {:else}
-                <LayoutGrid size={16} /> Modifier la disposition
+          <footer>
+            <span>
+              {#if version}
+                Augmented PC Deck {version}
+              {:else if error}
+                Le moteur Tauri n'est pas joignable : {error}
               {/if}
-            </button>
-            <button
-              type="button"
-              aria-label="Ouvrir les paramètres"
-              onclick={() => (showSettings = true)}
-            >
-              <Settings size={16} />
-              Paramètres
-            </button>
-          </span>
-        </footer>
-      </main>
-    {/if}
+            </span>
+            <span class="buttons">
+              <button type="button" aria-pressed={editing} onclick={() => (editing = !editing)}>
+                {#if editing}
+                  <Check size={16} /> Terminé
+                {:else}
+                  <LayoutGrid size={16} /> Modifier la disposition
+                {/if}
+              </button>
+              <button
+                type="button"
+                aria-label="Ouvrir les paramètres"
+                onclick={() => (showSettings = true)}
+              >
+                <Settings size={16} />
+                Paramètres
+              </button>
+            </span>
+          </footer>
+        </main>
+      {/if}
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
   .window {
