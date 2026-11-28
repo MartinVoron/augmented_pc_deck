@@ -46,15 +46,25 @@ pub fn choose(env: Env<'_>) -> Backend {
     let set = |value: Option<&str>| value.is_some_and(|v| !v.trim().is_empty());
     let wayland =
         set(env.wayland_display) || env.session_type.is_some_and(|t| t.trim() == "wayland");
-    if !wayland || set(env.gdk_backend) {
+    if !wayland {
         return Backend::Default;
     }
     let desktop = env.desktop.unwrap_or_default().to_lowercase();
     let mutter = desktop
         .split(':')
         .any(|name| NO_LAYER_SHELL.contains(&name.trim()));
+    // Le layer shell demandé passe avant `GDK_BACKEND` (que certains bureaux,
+    // comme COSMIC, fixent eux-mêmes).
     if env.layer_shell && !mutter {
-        Backend::Wayland
+        return Backend::Wayland;
+    }
+    // Un seul serveur choisi : on le garde. Une liste (« wayland,x11 ») n'est
+    // qu'un ordre de préférence par défaut.
+    let chosen = env
+        .gdk_backend
+        .is_some_and(|v| !v.trim().is_empty() && !v.contains(','));
+    if chosen {
+        Backend::Default
     } else if set(env.x11_display) {
         Backend::Xwayland
     } else {
@@ -63,6 +73,19 @@ pub fn choose(env: Env<'_>) -> Backend {
 }
 
 static NATIVE_WAYLAND: AtomicBool = AtomicBool::new(false);
+static WAYLAND_SESSION: AtomicBool = AtomicBool::new(false);
+static SUMMARY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Indique si la session est Wayland, quel que soit le serveur retenu : la
+/// position de la souris et des fenêtres n'y est pas fiable (souvent 0,0).
+pub fn wayland_session() -> bool {
+    WAYLAND_SESSION.load(Ordering::Relaxed)
+}
+
+/// Résumé de l'environnement lu au démarrage, pour le journal.
+pub fn summary() -> &'static str {
+    SUMMARY.get().map_or("", String::as_str)
+}
 
 /// Indique si l'application tourne en Wayland avec le layer shell pour l'encoche.
 pub fn native_wayland() -> bool {
@@ -80,15 +103,33 @@ pub fn setup() -> Backend {
         var("GDK_BACKEND"),
         var("XDG_CURRENT_DESKTOP"),
     );
-    let backend = choose(Env {
+    let wanted = var("AUGMENTED_PC_DECK_LAYER_SHELL").is_some_and(|v| v.trim() == "1");
+    let library = crate::layer::available();
+    let env = Env {
         wayland_display: wayland_display.as_deref(),
         session_type: session_type.as_deref(),
         x11_display: x11_display.as_deref(),
         gdk_backend: gdk_backend.as_deref(),
         desktop: desktop.as_deref(),
-        layer_shell: var("AUGMENTED_PC_DECK_LAYER_SHELL").is_some_and(|v| v.trim() == "1")
-            && crate::layer::available(),
-    });
+        layer_shell: wanted && library,
+    };
+    let backend = choose(env);
+    let wayland = choose(Env {
+        gdk_backend: None,
+        x11_display: Some(":0"),
+        layer_shell: false,
+        ..env
+    }) != Backend::Default;
+    WAYLAND_SESSION.store(wayland, Ordering::Relaxed);
+    let _ = SUMMARY.set(format!(
+        "session {}, bureau {}, GDK_BACKEND {}, layer shell demandé : {}, \
+         libgtk-layer-shell : {}",
+        session_type.as_deref().unwrap_or("?"),
+        desktop.as_deref().unwrap_or("?"),
+        gdk_backend.as_deref().unwrap_or("non fixé"),
+        if wanted { "oui" } else { "non" },
+        if library { "trouvée" } else { "absente" },
+    ));
     match backend {
         Backend::Wayland => {
             // Appelé avant tout autre fil d'exécution : la modification est sûre.
@@ -142,10 +183,25 @@ mod tests {
     }
 
     #[test]
+    fn requested_layer_shell_wins_over_gdk_backend() {
+        let cosmic = Env {
+            gdk_backend: Some("wayland"),
+            ..wayland("COSMIC", true)
+        };
+        assert_eq!(choose(cosmic), Backend::Wayland);
+        // Une liste de préférence n'est pas un choix.
+        let list = Env {
+            gdk_backend: Some("wayland,x11"),
+            ..wayland("COSMIC", false)
+        };
+        assert_eq!(choose(list), Backend::Xwayland);
+    }
+
+    #[test]
     fn user_choice_and_x11_sessions_are_left_alone() {
         let chosen = Env {
             gdk_backend: Some("x11"),
-            ..wayland("COSMIC", true)
+            ..wayland("COSMIC", false)
         };
         assert_eq!(choose(chosen), Backend::Default);
         let x11 = Env {

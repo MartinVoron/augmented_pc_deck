@@ -86,6 +86,9 @@ pub fn run() {
         ])
         .setup(move |app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
+            if !display::summary().is_empty() {
+                log::info!("affichage : {}", display::summary());
+            }
             match backend {
                 display::Backend::Wayland => {
                     log::info!("session Wayland : encoche par le layer shell");
