@@ -15,12 +15,34 @@
   /** Valeur affichée : celle du curseur en cours de réglage, sinon celle enregistrée. */
   let blur = $derived(blurPreview.value ?? appearance.blur);
 
-  /** Le curseur est lâché : on enregistre, puis on revient à la valeur enregistrée. */
+  /** Délai sans mouvement du curseur avant d'enregistrer, en millisecondes. */
+  const BLUR_SAVE_DELAY_MS = 400;
+  let pendingSave: ReturnType<typeof setTimeout> | undefined;
+
+  /**
+   * Le curseur bouge : l'aperçu suit tout de suite, l'enregistrement attend qu'il
+   * s'arrête. L'événement `change` du lâcher n'arrive pas toujours sous WebKitGTK
+   * (bouton relâché hors du curseur, par exemple).
+   */
+  function previewBlur(value: number) {
+    blurPreview.value = value;
+    clearTimeout(pendingSave);
+    pendingSave = setTimeout(() => void saveBlur(value), BLUR_SAVE_DELAY_MS);
+  }
+
+  /** Enregistre le niveau de flou, puis revient à la valeur enregistrée. */
   async function saveBlur(value: number) {
+    clearTimeout(pendingSave);
+    pendingSave = undefined;
     blurPreview.value = value;
     await change({ blur: value });
-    blurPreview.value = null;
+    if (blurPreview.value === value) blurPreview.value = null;
   }
+
+  // Paramètres fermés pendant le réglage : la dernière valeur est quand même enregistrée.
+  $effect(() => () => {
+    if (pendingSave !== undefined && blurPreview.value !== null) void saveBlur(blurPreview.value);
+  });
 
   function change(patch: Partial<AppearanceSettings>): Promise<void> {
     return updateSettings(
@@ -78,12 +100,22 @@
         value={blur}
         disabled={appearance.theme !== "glass"}
         aria-valuetext="{blur} %"
-        oninput={(event) => (blurPreview.value = Number(event.currentTarget.value))}
+        oninput={(event) => previewBlur(Number(event.currentTarget.value))}
         onchange={(event) => saveBlur(Number(event.currentTarget.value))}
       />
       <output for="glass-blur">{blur} %</output>
     </span>
   </div>
+  {#if appearance.theme === "glass"}
+    <!-- Aperçu en direct : une tuile posée sur des formes, pour voir le flou. -->
+    <div class="blur-sample" aria-hidden="true">
+      <span class="shape one"></span>
+      <span class="shape two"></span>
+      <span class="shape three"></span>
+      <span class="sample-text">Aa</span>
+      <span class="sample-tile">Tuile</span>
+    </div>
+  {/if}
   <p class="hint">
     {#if appearance.theme === "glass"}
       100 % : tuiles en verre dépoli. 0 % : tuiles transparentes, sans flou.
@@ -180,6 +212,68 @@
     border: 1px solid rgb(255 255 255 / 35%);
     border-radius: 6px;
     background: rgb(255 255 255 / 22%);
+  }
+
+  .blur-sample {
+    position: relative;
+    height: 6.5rem;
+    margin: 0.25rem 0;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: var(--app-bg);
+  }
+
+  .shape {
+    position: absolute;
+    border-radius: 50%;
+  }
+
+  .shape.one {
+    top: 0.8rem;
+    left: 18%;
+    width: 3.5rem;
+    height: 3.5rem;
+    background: #ffd60a;
+  }
+
+  .shape.two {
+    top: 2.5rem;
+    left: 42%;
+    width: 4.5rem;
+    height: 4.5rem;
+    background: #ff453a;
+  }
+
+  .shape.three {
+    top: 0.6rem;
+    left: 62%;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.5rem;
+    background: #30d158;
+  }
+
+  .sample-text {
+    position: absolute;
+    top: 1.6rem;
+    left: 30%;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  /* Mêmes réglages que les vraies tuiles (Tile.svelte), suivis en direct. */
+  .sample-tile {
+    position: absolute;
+    inset: 1.25rem 32% 1.25rem 30%;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--tile-border);
+    border-radius: var(--tile-radius);
+    background: var(--tile-bg);
+    color: var(--color-text);
+    font-size: 0.875rem;
+    backdrop-filter: var(--tile-backdrop);
   }
 
   .field {
