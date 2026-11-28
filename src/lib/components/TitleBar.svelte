@@ -4,10 +4,14 @@
     (attribut data-tauri-drag-region).
   - Trois ronds façon macOS : rouge pour fermer (la fenêtre est masquée dans la
     zone de notification), jaune pour réduire, vert pour agrandir.
+  - À droite, un bouton ancre la fenêtre en encoche au bord gauche de l'écran,
+    centrée en hauteur (réglage window.dock).
 -->
 <script lang="ts">
+  import { PanelLeftDashed } from "@lucide/svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { logError } from "../logging";
+  import { updateSettings } from "../modules/settings/state.svelte";
 
   let { title = "Augmented PC Deck" }: { title?: string } = $props();
 
@@ -20,6 +24,12 @@
       // Hors de Tauri (navigateur, tests) : la fenêtre n'existe pas.
       void logError("barre de titre", e);
     }
+  }
+
+  function dockLeft() {
+    updateSettings((config) => (config.window.dock = "left")).catch((e: unknown) =>
+      logError("barre de titre", e),
+    );
   }
 </script>
 
@@ -54,6 +64,15 @@
     </button>
   </div>
   <span class="title" data-tauri-drag-region>{title}</span>
+  <button
+    type="button"
+    class="dock"
+    aria-label="Ancrer en encoche à gauche de l'écran"
+    title="Ancrer à gauche"
+    onclick={dockLeft}
+  >
+    <PanelLeftDashed size={14} />
+  </button>
 </header>
 
 <style>
@@ -127,5 +146,21 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .dock {
+    display: inline-flex;
+    padding: 0.25rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  .dock:hover,
+  .dock:focus-visible {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
   }
 </style>

@@ -12,6 +12,16 @@ const { fakeWindow } = vi.hoisted(() => ({
 }));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => fakeWindow }));
 
+// Faux réglages : on regarde la modification demandée.
+const { updateSettings } = vi.hoisted(() => ({
+  updateSettings: vi.fn((change: (config: { window: { dock?: string } }) => void) => {
+    const config = { window: { dock: "none" } };
+    change(config);
+    return Promise.resolve(config);
+  }),
+}));
+vi.mock("../modules/settings/state.svelte", () => ({ updateSettings }));
+
 describe("TitleBar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,5 +51,16 @@ describe("TitleBar", () => {
 
     expect(fakeWindow.minimize).toHaveBeenCalled();
     expect(fakeWindow.toggleMaximize).toHaveBeenCalled();
+  });
+
+  it("ancre la fenêtre en encoche au bord gauche de l'écran", async () => {
+    render(TitleBar);
+
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Ancrer en encoche à gauche de l'écran" }),
+    );
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    expect(await updateSettings.mock.results[0].value).toEqual({ window: { dock: "left" } });
   });
 });
