@@ -1,3 +1,4 @@
+pub mod display;
 pub mod dock;
 pub mod error;
 pub mod http;
@@ -20,6 +21,8 @@ use tokens::TokenStore;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     logging::log_panics();
+    // Avant GTK : en session Wayland, passer par XWayland pour que l'encoche marche.
+    let xwayland = display::prefer_x11();
     tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_notification::init())
@@ -78,8 +81,13 @@ pub fn run() {
             weather::weather_forecast,
             weather::weather_search,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
+            if xwayland {
+                log::info!(
+                    "session Wayland : affichage par XWayland (GDK_BACKEND=x11) pour l'encoche"
+                );
+            }
             settings::init(app.handle())?;
             window::create_tray(app.handle())?;
             claude::start(app.handle());
