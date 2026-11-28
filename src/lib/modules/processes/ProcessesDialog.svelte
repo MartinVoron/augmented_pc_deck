@@ -3,6 +3,7 @@
   rafraîchie toutes les 2 secondes. Un processus s'arrête après confirmation.
 -->
 <script lang="ts">
+  import { portal } from "../../actions/portal";
   import { ArrowDown, ArrowUp, Search, Square, X } from "@lucide/svelte";
   import { onMount } from "svelte";
   import {
@@ -81,7 +82,7 @@
   }}
 />
 
-<div class="backdrop">
+<div class="backdrop" use:portal>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="processes-title">
     <header>
       <h2 id="processes-title">Processus</h2>

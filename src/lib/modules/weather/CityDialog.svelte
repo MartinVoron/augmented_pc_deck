@@ -3,6 +3,7 @@
   villes trouvées (avec leur région, pour distinguer les homonymes).
 -->
 <script lang="ts">
+  import { portal } from "../../actions/portal";
   import { MapPin, Search, X } from "@lucide/svelte";
   import { DEFAULT_PLACE, searchPlaces, type Place } from ".";
   import { findTile, updateTile } from "../../grid/state";
@@ -42,7 +43,7 @@
 
 <svelte:window onkeydown={(event) => event.key === "Escape" && onclose()} />
 
-<div class="backdrop">
+<div class="backdrop" use:portal>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="city-title">
     <header>
       <h2 id="city-title">Ville de la météo</h2>

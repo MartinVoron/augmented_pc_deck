@@ -4,6 +4,7 @@
   en la tapant (URL) ou en déposant un fichier depuis l'Explorateur.
 -->
 <script lang="ts">
+  import { portal } from "../../actions/portal";
   import {
     ArrowDown,
     ArrowUp,
@@ -109,7 +110,7 @@
 
 <svelte:window onkeydown={(event) => event.key === "Escape" && onclose()} />
 
-<div class="backdrop">
+<div class="backdrop" use:portal>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
     <header>
       <h2 id="shortcuts-title">Raccourcis de « {tile?.title ?? "Raccourcis"} »</h2>
