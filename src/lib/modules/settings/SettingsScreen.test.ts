@@ -35,6 +35,7 @@ function fakeBackend(command: string, args?: Record<string, unknown>): Promise<u
         scriptPath: "C:\\deck\\claude-hook.ps1",
         scriptInstalled: false,
         settingsSnippet: "{}",
+        settingsFile: "~/.claude/settings.json",
       });
     default:
       return Promise.reject({ code: "other", message: `commande inconnue : ${command}` });
@@ -62,7 +63,7 @@ describe("SettingsScreen", () => {
   it("enregistre tout de suite un changement des notifications", async () => {
     render(SettingsScreen, { onclose: () => {} });
 
-    const toggle = screen.getByRole("switch", { name: "Afficher les notifications Windows" });
+    const toggle = screen.getByRole("switch", { name: "Afficher les notifications" });
     expect((toggle as HTMLInputElement).checked).toBe(true);
     await fireEvent.click(toggle);
 
@@ -82,7 +83,7 @@ describe("SettingsScreen", () => {
       config: expect.objectContaining({ window: { alwaysOnTop: true, fullscreen: false } }),
     });
 
-    const autostart = screen.getByRole("switch", { name: "Lancer au démarrage de Windows" });
+    const autostart = screen.getByRole("switch", { name: "Lancer à l'ouverture de la session" });
     await vi.waitFor(() => expect((autostart as HTMLInputElement).disabled).toBe(false));
     await fireEvent.click(autostart);
     expect(mockedInvoke).toHaveBeenCalledWith("window_autostart_set", { enabled: true });

@@ -3,6 +3,8 @@
 //! Sous Windows, ils sont stockés dans le Gestionnaire d'identification
 //! (Panneau de configuration > Gestionnaire d'identification > Informations
 //! d'identification Windows), sous le nom `augmented-pc-deck`.
+//! Sous Linux, ils sont rangés dans le trousseau du bureau (GNOME Keyring, KWallet…)
+//! par le service Secret Service, avec l'attribut `service` = `augmented-pc-deck`.
 //!
 //! Règles :
 //! - un jeton n'est jamais écrit dans `config.json` ni dans le journal ;
@@ -79,13 +81,29 @@ pub trait SecretBackend: Send + Sync {
     fn delete(&self, account: &str) -> AppResult<()>;
 }
 
-/// Gestionnaire d'identification de Windows (via la bibliothèque `keyring`).
+/// Nom du magasin de jetons du système, pour les messages d'erreur.
+#[cfg(windows)]
+const STORE_NAME: &str = "le Gestionnaire d'identification";
+#[cfg(not(windows))]
+const STORE_NAME: &str = "le trousseau du bureau";
+
+/// Magasin de jetons du système (via la bibliothèque `keyring`) : Gestionnaire
+/// d'identification sous Windows, trousseau Secret Service sous Linux.
 pub struct KeyringBackend;
 
 fn keyring_error(action: &str, error: keyring::Error) -> AppError {
     // Le message d'erreur de `keyring` ne contient jamais le jeton lui-même.
+    let hint = match error {
+        // Sous Linux : aucun trousseau ne répond, ou il est verrouillé.
+        keyring::Error::NoStorageAccess(_) | keyring::Error::PlatformFailure(_)
+            if cfg!(target_os = "linux") =>
+        {
+            " (vérifiez qu'un trousseau est installé et déverrouillé, par exemple GNOME Keyring ou KWallet)"
+        }
+        _ => "",
+    };
     AppError::Other(format!(
-        "impossible de {action} le jeton dans le Gestionnaire d'identification : {error}"
+        "impossible de {action} le jeton dans {STORE_NAME} : {error}{hint}"
     ))
 }
 
@@ -149,7 +167,7 @@ impl TokenStore {
         }
     }
 
-    /// Magasin de Windows, utilisé par l'application.
+    /// Magasin du système, utilisé par l'application.
     pub fn system() -> Self {
         Self::new(KeyringBackend)
     }

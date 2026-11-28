@@ -62,12 +62,51 @@ fn disk_name(mount_point: &str) -> String {
     }
 }
 
-/// Garde les disques utiles : taille connue, un seul par point de montage, triés par nom.
-fn collect_disks<'a>(disks: impl Iterator<Item = (&'a str, u64, u64)>) -> Vec<DiskUsage> {
+/// Systèmes de fichiers virtuels ou en lecture seule (Linux), sans intérêt pour la tuile :
+/// paquets Snap (`squashfs`), mémoire (`tmpfs`), conteneurs (`overlay`)…
+const VIRTUAL_FILE_SYSTEMS: [&str; 8] = [
+    "squashfs",
+    "tmpfs",
+    "devtmpfs",
+    "ramfs",
+    "overlay",
+    "efivarfs",
+    "iso9660",
+    "fuse.snapfuse",
+];
+
+/// Dossiers de montage réservés au système (Linux) : démarrage, Snap, Docker.
+const SYSTEM_MOUNTS: [&str; 5] = [
+    "/boot",
+    "/snap",
+    "/var/snap",
+    "/var/lib/docker",
+    "/run/snapd",
+];
+
+/// Indique si un disque intéresse l'utilisateur. Sous Windows, tous les lecteurs le sont.
+fn is_user_disk(mount: &str, file_system: &str) -> bool {
+    let file_system = file_system.to_ascii_lowercase();
+    if VIRTUAL_FILE_SYSTEMS.contains(&file_system.as_str()) {
+        return false;
+    }
+    !SYSTEM_MOUNTS.iter().any(|system| {
+        mount == *system
+            || mount
+                .strip_prefix(system)
+                .is_some_and(|rest| rest.starts_with('/'))
+    })
+}
+
+/// Garde les disques utiles : vrai système de fichiers, taille connue, un seul par point
+/// de montage, triés par nom. Chaque disque est donné par (montage, système de fichiers,
+/// taille, espace libre).
+fn collect_disks<'a>(disks: impl Iterator<Item = (&'a str, &'a str, u64, u64)>) -> Vec<DiskUsage> {
     let mut result: Vec<DiskUsage> = Vec::new();
-    for (mount, total, available) in disks {
+    for (mount, file_system, total, available) in disks {
         let name = disk_name(mount);
-        if total == 0 || result.iter().any(|d| d.name == name) {
+        if total == 0 || !is_user_disk(mount, file_system) || result.iter().any(|d| d.name == name)
+        {
             continue;
         }
         result.push(DiskUsage {
@@ -106,6 +145,7 @@ pub async fn processes_usage(monitor: State<'_, ProcessMonitor>) -> AppResult<Us
         let list = disks.list().iter().map(|d| {
             (
                 d.mount_point().to_str().unwrap_or_default(),
+                d.file_system().to_str().unwrap_or_default(),
                 d.total_space(),
                 d.available_space(),
             )
@@ -152,7 +192,9 @@ pub async fn processes_list(monitor: State<'_, ProcessMonitor>) -> AppResult<Vec
         .processes()
         .values()
         // Le processus « inactif » du système (pid 0) n'est pas un vrai programme.
-        .filter(|p| p.pid().as_u32() != 0)
+        // Sous Linux, `sysinfo` donne aussi les fils d'exécution (threads) et les tâches
+        // du noyau : on ne garde que les vrais programmes.
+        .filter(|p| p.pid().as_u32() != 0 && p.thread_kind().is_none())
         .map(|p| ProcessInfo {
             pid: p.pid().as_u32(),
             name: p.name().to_string_lossy().into_owned(),
@@ -192,9 +234,12 @@ pub async fn processes_kill(
         log::info!("processus arrêté : {name} ({pid})");
         Ok(())
     } else {
-        Err(AppError::PermissionDenied(format!(
+        let hint = if cfg!(windows) {
             "Windows refuse d'arrêter « {name} ». Il faut peut-être lancer l'application en administrateur"
-        )))
+        } else {
+            "le système refuse d'arrêter « {name} » : il appartient sans doute à un autre utilisateur"
+        };
+        Err(AppError::PermissionDenied(hint.replace("{name}", &name)))
     }
 }
 
@@ -213,10 +258,10 @@ mod tests {
     fn keeps_one_entry_per_disk_with_a_size() {
         let disks = collect_disks(
             [
-                (r"D:\", 1000, 400),
-                (r"C:\", 500, 100),
-                (r"C:\", 500, 100),
-                (r"E:\", 0, 0),
+                (r"D:\", "NTFS", 1000, 400),
+                (r"C:\", "NTFS", 500, 100),
+                (r"C:\", "NTFS", 500, 100),
+                (r"E:\", "", 0, 0),
             ]
             .into_iter(),
         );
@@ -235,6 +280,19 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn hides_virtual_and_system_disks_on_linux() {
+        assert!(is_user_disk("/", "ext4"));
+        assert!(is_user_disk("/home", "btrfs"));
+        assert!(is_user_disk("/media/moi/CLE", "vfat"));
+        assert!(is_user_disk("/bootcamp", "ntfs"));
+        assert!(!is_user_disk("/snap/firefox/1234", "squashfs"));
+        assert!(!is_user_disk("/run/user/1000", "tmpfs"));
+        assert!(!is_user_disk("/boot/efi", "vfat"));
+        assert!(!is_user_disk("/boot", "ext4"));
+        assert!(!is_user_disk("/var/lib/docker/overlay2/abc", "ext4"));
     }
 
     #[test]

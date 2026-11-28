@@ -29,6 +29,8 @@ export interface ClaudeStatus {
   scriptInstalled: boolean;
   /** Bloc à ajouter dans `~/.claude/settings.json`. */
   settingsSnippet: string;
+  /** Emplacement des réglages de Claude Code (`%USERPROFILE%\.claude\settings.json` ou `~/.claude/settings.json`). */
+  settingsFile: string;
 }
 
 /** Événement envoyé par le Rust à chaque nouvel événement. */

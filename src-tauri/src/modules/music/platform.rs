@@ -1,16 +1,19 @@
-//! Accès aux sessions média de Windows. Hors de Windows, rien ne joue.
+//! Accès aux lecteurs de musique : sessions média de Windows, MPRIS sous Linux.
+//! Ailleurs, rien ne joue.
 
+#[cfg(target_os = "linux")]
+pub use linux_impl::{control, now_playing};
 #[cfg(windows)]
 pub use windows_impl::{control, now_playing};
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn now_playing(
     _state: &super::MusicState,
 ) -> crate::error::AppResult<Option<super::NowPlaying>> {
     Ok(None)
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn control(_action: super::MusicAction) -> crate::error::AppResult<()> {
     Err(crate::error::AppError::NotFound(
         "La musique en cours".into(),
@@ -169,5 +172,147 @@ mod windows_impl {
         };
         let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
         Ok(format!("data:{mime};base64,{encoded}"))
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod linux_impl {
+    //! Lecteurs MPRIS (D-Bus) : Spotify, Firefox, Chrome, VLC, Rhythmbox…
+
+    use std::time::Duration;
+
+    use base64::Engine;
+    use mpris::{PlaybackStatus as Status, Player, PlayerFinder};
+
+    use super::super::{image_mime, MusicAction, MusicState, NowPlaying, PlaybackStatus};
+    use crate::error::{AppError, AppResult};
+
+    /// Taille maximale d'une pochette lue.
+    const MAX_THUMBNAIL_BYTES: u64 = 2 * 1024 * 1024;
+
+    /// Délai maximal d'une réponse d'un lecteur, pour ne pas bloquer la tuile.
+    const DBUS_TIMEOUT_MS: i32 = 500;
+
+    fn mpris_error(e: impl std::fmt::Display) -> AppError {
+        AppError::Other(format!("les lecteurs de musique ne répondent pas : {e}"))
+    }
+
+    /// Ordre de préférence : un lecteur qui joue, puis en pause, puis arrêté.
+    fn rank(status: Status) -> u8 {
+        match status {
+            Status::Playing => 0,
+            Status::Paused => 1,
+            Status::Stopped => 2,
+        }
+    }
+
+    /// Lecteur à afficher, ou `None` si aucun lecteur n'est ouvert.
+    fn current_player() -> AppResult<Option<Player>> {
+        let finder = PlayerFinder::new().map_err(mpris_error)?;
+        let players = match finder.find_all() {
+            Ok(players) => players,
+            Err(mpris::FindingError::NoPlayerFound) => return Ok(None),
+            Err(e) => return Err(mpris_error(e)),
+        };
+        Ok(players
+            .into_iter()
+            .map(|mut player| {
+                player.set_dbus_timeout_ms(DBUS_TIMEOUT_MS);
+                let status = player.get_playback_status().unwrap_or(Status::Stopped);
+                (rank(status), player)
+            })
+            .min_by_key(|(rank, _)| *rank)
+            .map(|(_, player)| player))
+    }
+
+    pub fn now_playing(state: &MusicState) -> AppResult<Option<NowPlaying>> {
+        let Some(player) = current_player()? else {
+            return Ok(None);
+        };
+        let metadata = player.get_metadata().map_err(mpris_error)?;
+        let title = metadata.title().unwrap_or_default().to_string();
+        if title.is_empty() {
+            return Ok(None);
+        }
+        let artist = metadata.artists().unwrap_or_default().join(", ");
+        let album = metadata.album_name().unwrap_or_default().to_string();
+        let source = player.identity().to_string();
+        let status = match player.get_playback_status().map_err(mpris_error)? {
+            Status::Playing => PlaybackStatus::Playing,
+            Status::Paused => PlaybackStatus::Paused,
+            Status::Stopped => PlaybackStatus::Stopped,
+        };
+        let duration = metadata.length().map_or(0, |d| d.as_millis() as u64);
+        let position = player
+            .get_position()
+            .map_or(0, |d: Duration| d.as_millis() as u64);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as u64);
+
+        let key = format!("{source}|{title}|{artist}|{album}");
+        let art_url = metadata.art_url().map(str::to_string);
+        let thumbnail = state.thumbnail(&key, || art_url.as_deref().and_then(read_thumbnail));
+
+        let can_control = player.can_control().unwrap_or(false);
+        Ok(Some(NowPlaying {
+            title,
+            artist,
+            album,
+            source,
+            status,
+            position_ms: (duration > 0).then_some(position.min(duration)),
+            duration_ms: (duration > 0).then_some(duration),
+            updated_at: now,
+            thumbnail,
+            can_play_pause: can_control
+                && (player.can_pause().unwrap_or(false) || player.can_play().unwrap_or(false)),
+            can_next: can_control && player.can_go_next().unwrap_or(false),
+            can_previous: can_control && player.can_go_previous().unwrap_or(false),
+        }))
+    }
+
+    /// Envoie une commande de lecture au lecteur affiché.
+    pub fn control(action: MusicAction) -> AppResult<()> {
+        let player =
+            current_player()?.ok_or_else(|| AppError::NotFound("La musique en cours".into()))?;
+        match action {
+            MusicAction::PlayPause => player.play_pause(),
+            MusicAction::Next => player.next(),
+            MusicAction::Previous => player.previous(),
+        }
+        .map_err(mpris_error)
+    }
+
+    /// Lit la pochette (fichier local ou adresse web) et la renvoie en `data:` URL.
+    fn read_thumbnail(art_url: &str) -> Option<String> {
+        let url = url::Url::parse(art_url).ok()?;
+        let bytes = match url.scheme() {
+            "file" => {
+                use std::io::Read;
+                let path = url.to_file_path().ok()?;
+                let mut bytes = Vec::new();
+                std::fs::File::open(path)
+                    .ok()?
+                    .take(MAX_THUMBNAIL_BYTES)
+                    .read_to_end(&mut bytes)
+                    .ok()?;
+                bytes
+            }
+            "http" | "https" => tauri::async_runtime::block_on(async {
+                let response = crate::http::client().get(url).send().await.ok()?;
+                if !response.status().is_success()
+                    || response.content_length().unwrap_or(0) > MAX_THUMBNAIL_BYTES
+                {
+                    return None;
+                }
+                let bytes = response.bytes().await.ok()?;
+                (bytes.len() as u64 <= MAX_THUMBNAIL_BYTES).then(|| bytes.to_vec())
+            })?,
+            _ => return None,
+        };
+        let mime = image_mime(&bytes)?;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+        Some(format!("data:{mime};base64,{encoded}"))
     }
 }

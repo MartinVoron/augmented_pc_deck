@@ -1,4 +1,4 @@
-//! Fenêtre principale : position retenue, options d'affichage, démarrage avec Windows
+//! Fenêtre principale : position retenue, options d'affichage, démarrage avec la session
 //! et icône dans la zone de notification.
 
 use tauri::menu::{Menu, MenuItem};
@@ -22,7 +22,8 @@ pub fn state_plugin<R: Runtime>() -> TauriPlugin<R> {
         .build()
 }
 
-/// Lance l'application au démarrage de Windows (activé depuis les paramètres).
+/// Lance l'application à l'ouverture de la session (activé depuis les paramètres) :
+/// registre sous Windows, fichier `.desktop` dans `~/.config/autostart` sous Linux.
 pub fn autostart_plugin<R: Runtime>() -> TauriPlugin<R> {
     tauri_plugin_autostart::Builder::new().build()
 }
@@ -77,7 +78,9 @@ fn hide<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Icône dans la zone de notification, avec le menu Afficher, Masquer et Quitter.
-/// Un clic gauche sur l'icône affiche la fenêtre.
+/// Sous Windows, un clic gauche sur l'icône affiche la fenêtre. Sous Linux
+/// (AppIndicator), l'icône ne reçoit pas les clics : tout clic ouvre le menu, qui
+/// commence donc par « Afficher ».
 pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let show_item = MenuItem::with_id(app, "show", "Afficher", true, None::<&str>)?;
     let hide_item = MenuItem::with_id(app, "hide", "Masquer", true, None::<&str>)?;
@@ -113,17 +116,17 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
 fn autostart_error(error: impl std::fmt::Display) -> AppError {
     AppError::Other(format!(
-        "réglage du démarrage avec Windows impossible : {error}"
+        "réglage du lancement au démarrage impossible : {error}"
     ))
 }
 
-/// Indique si l'application se lance au démarrage de Windows.
+/// Indique si l'application se lance à l'ouverture de la session.
 #[tauri::command]
 pub fn window_autostart_get<R: Runtime>(app: AppHandle<R>) -> AppResult<bool> {
     app.autolaunch().is_enabled().map_err(autostart_error)
 }
 
-/// Active ou désactive le lancement au démarrage de Windows.
+/// Active ou désactive le lancement à l'ouverture de la session.
 #[tauri::command]
 pub fn window_autostart_set<R: Runtime>(app: AppHandle<R>, enabled: bool) -> AppResult<()> {
     let autolaunch = app.autolaunch();
@@ -133,7 +136,7 @@ pub fn window_autostart_set<R: Runtime>(app: AppHandle<R>, enabled: bool) -> App
         autolaunch.disable().map_err(autostart_error)?;
     }
     log::info!(
-        "démarrage avec Windows : {}",
+        "lancement au démarrage : {}",
         if enabled { "activé" } else { "désactivé" }
     );
     Ok(())
