@@ -13,9 +13,11 @@
 -->
 <script lang="ts">
   import { PictureInPicture2 } from "@lucide/svelte";
+  import { untrack } from "svelte";
   import { prefersReducedMotion, Spring } from "svelte/motion";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
-  import { setDockPanel } from "../dock";
+  import { NOTCH_ACTIVE_LENGTH, NOTCH_LENGTH, setDockNotch, setDockPanel } from "../dock";
+  import { live, pickActivity, watchActivity } from "../dock/activity.svelte";
   import { CLOSE_SPRING, foldedSize, OPEN_SPRING, openSize, windowForPanel } from "../dock/island";
   import { panelLayout } from "../dock/panel";
   import { dock } from "../dock/state.svelte";
@@ -23,6 +25,7 @@
   import { logError } from "../logging";
   import { settings, updateSettings } from "../modules/settings/state.svelte";
   import Dashboard from "./Dashboard.svelte";
+  import NotchActivity from "./NotchActivity.svelte";
   import PageTabs from "./PageTabs.svelte";
 
   let { pageId, onselect }: { pageId: string; onselect: (id: string) => void } = $props();
@@ -45,7 +48,24 @@
     setDockPanel(size.width, size.height).catch((e: unknown) => logError("ancrage", e));
   });
 
-  let folded = $derived(foldedSize(dock.edge));
+  // Activité en direct (morceau, minuteur) : l'encoche repliée s'allonge pour la montrer.
+  $effect(() => watchActivity());
+  let activity = $derived(pickActivity(live.track, live.runs));
+  let vertical = $derived(dock.edge === "left" || dock.edge === "right");
+  let notchLength = $derived(activity && !vertical ? NOTCH_ACTIVE_LENGTH : NOTCH_LENGTH);
+  let sentLength = NOTCH_LENGTH;
+  $effect(() => {
+    const length = notchLength;
+    // Pour rétrécir, la fenêtre attend que l'encoche ait fini de se replier.
+    const delay = length < sentLength ? 300 : 0;
+    const id = setTimeout(() => {
+      sentLength = length;
+      setDockNotch(length).catch((e: unknown) => logError("ancrage", e));
+    }, delay);
+    return () => clearTimeout(id);
+  });
+
+  let folded = $derived(foldedSize(dock.edge, notchLength));
   let target = $derived(
     dock.expanded
       ? openSize(dock.edge, {
@@ -67,8 +87,14 @@
 
   // Changer de bord ne s'anime pas : l'encoche apparaît directement à sa place.
   $effect(() => {
-    void dock.edge;
-    void size.set(foldedSize(dock.edge), { instant: true });
+    const edge = dock.edge;
+    void size.set(
+      foldedSize(
+        edge,
+        untrack(() => notchLength),
+      ),
+      { instant: true },
+    );
   });
 
   function popOut() {
@@ -93,8 +119,12 @@
     <span class="ear start" aria-hidden="true"></span>
     <span class="ear end" aria-hidden="true"></span>
     <div class="body">
-      <div class="notch" aria-hidden="true">
-        {#if logo}<img src="/favicon.png" alt="" width="16" height="16" />{/if}
+      <div class="notch" aria-hidden={dock.expanded}>
+        {#if activity}
+          <NotchActivity {activity} {vertical} />
+        {:else if logo}
+          <img src="/favicon.png" alt="" width="16" height="16" />
+        {/if}
       </div>
       <div class="panel" inert={!dock.expanded} aria-hidden={!dock.expanded}>
         <div class="bar">
