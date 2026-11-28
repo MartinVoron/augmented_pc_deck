@@ -21,6 +21,11 @@ export interface DockStatus {
   edge: DockEdge;
   /** Panneau ouvert (la souris est dessus) ; sinon, encoche repliée. */
   expanded: boolean;
+  /**
+   * Le bureau a refusé de placer l'encoche contre le bord de l'écran : la fenêtre
+   * est revenue en fenêtre normale.
+   */
+  refused?: boolean;
 }
 
 /** Événement envoyé par le Rust quand l'ancrage change. */
@@ -57,4 +62,12 @@ export function setDockNotch(length: number): Promise<void> {
  */
 export function setDockPanel(width: number, height: number): Promise<void> {
   return call<void>("dock_set_panel", { width, height });
+}
+
+/**
+ * Dit au Rust si la souris est dans la fenêtre ancrée. Sous Linux, il ne peut pas
+ * suivre la souris lui-même : c'est ce qui ouvre et replie le panneau.
+ */
+export function setDockPointer(inside: boolean): Promise<void> {
+  return call<void>("dock_pointer", { inside });
 }

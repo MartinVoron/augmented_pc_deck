@@ -3,8 +3,9 @@
   (boring.notch) ou de la Dynamic Island d'un iPhone.
   - Repliée : une petite encoche noire collée au bord, raccordée à l'écran par deux
     coins creusés (« oreilles »), avec le logo ou entièrement noire.
-  - La fenêtre (transparente) garde toujours la taille du panneau ouvert : seule
-    l'encoche dessinée change de taille, sans redimensionner la fenêtre.
+  - La fenêtre (transparente) garde la taille du panneau ouvert : seule l'encoche
+    dessinée change de taille. Sous Linux, elle a la taille de l'encoche quand
+    celle-ci est repliée, et l'interface dit au Rust où est la souris.
   - Souris dessus : l'encoche s'étire jusqu'à la taille du panneau avec un ressort
     qui rebondit un peu, et les tuiles apparaissent.
   - Souris sortie : l'encoche se replie, avec un ressort sans rebond.
@@ -16,7 +17,13 @@
   import { untrack } from "svelte";
   import { prefersReducedMotion, Spring } from "svelte/motion";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
-  import { NOTCH_ACTIVE_LENGTH, NOTCH_LENGTH, setDockNotch, setDockPanel } from "../dock";
+  import {
+    NOTCH_ACTIVE_LENGTH,
+    NOTCH_LENGTH,
+    setDockNotch,
+    setDockPanel,
+    setDockPointer,
+  } from "../dock";
   import { live, pickActivity, watchActivity } from "../dock/activity.svelte";
   import { CLOSE_SPRING, foldedSize, OPEN_SPRING, openSize, windowForPanel } from "../dock/island";
   import { panelLayout } from "../dock/panel";
@@ -57,6 +64,28 @@
   // connaître sa longueur.
   $effect(() => {
     setDockNotch(notchLength).catch((e: unknown) => logError("ancrage", e));
+  });
+
+  // Souris dans la fenêtre ou non : sous Linux, c'est ce qui ouvre le panneau.
+  $effect(() => {
+    const root = document.documentElement;
+    let inside = false;
+    const send = (value: boolean) => {
+      if (value === inside) return;
+      inside = value;
+      setDockPointer(value).catch((e: unknown) => logError("ancrage", e));
+    };
+    const enter = () => send(true);
+    const leave = () => send(false);
+    root.addEventListener("mouseenter", enter);
+    root.addEventListener("mousemove", enter);
+    root.addEventListener("mouseleave", leave);
+    return () => {
+      root.removeEventListener("mouseenter", enter);
+      root.removeEventListener("mousemove", enter);
+      root.removeEventListener("mouseleave", leave);
+      send(false);
+    };
   });
 
   let folded = $derived(foldedSize(dock.edge, notchLength));
