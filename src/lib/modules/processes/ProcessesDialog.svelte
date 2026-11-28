@@ -189,7 +189,8 @@
     flex-direction: column;
     gap: 0.6rem;
     width: min(44rem, 100%);
-    height: min(36rem, 100%);
+    /* 100 % ne limiterait rien : la grille du fond n'a pas de hauteur fixée. */
+    height: min(36rem, calc(100vh - 2rem));
     padding: 1rem;
     border: 1px solid var(--color-border);
     border-radius: var(--tile-radius);
