@@ -113,14 +113,24 @@ pub enum NotchStyle {
     Logo,
 }
 
-/// Apparence de l'interface : thème, mode clair ou sombre, effet de fenêtre.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+/// Apparence de l'interface : thème, mode clair ou sombre, niveau de flou.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppearanceSettings {
     pub theme: Theme,
     pub mode: ColorMode,
-    /// Flou natif de Windows 11 (Mica) sous la fenêtre, pour le thème Verre.
-    pub window_effect: bool,
+    /// Flou des tuiles du thème Verre, en pourcentage : 0 transparent, 100 flou complet.
+    pub blur: u32,
+}
+
+impl Default for AppearanceSettings {
+    fn default() -> Self {
+        Self {
+            theme: Theme::default(),
+            mode: ColorMode::default(),
+            blur: 100,
+        }
+    }
 }
 
 /// Thème de l'interface. Une valeur inconnue revient à `classic`.
@@ -494,19 +504,17 @@ mod tests {
         assert_eq!(config.appearance, AppearanceSettings::default());
         assert_eq!(config.appearance.theme, Theme::Classic);
         assert_eq!(config.appearance.mode, ColorMode::System);
-        assert!(!config.appearance.window_effect);
+        assert_eq!(config.appearance.blur, 100);
 
         let config = parse(
-            r#"{ "version": 3, "appearance": { "theme": "glass", "mode": "light", "windowEffect": true } }"#,
+            r#"{ "version": 3, "appearance": { "theme": "glass", "mode": "light", "blur": 40 } }"#,
         )
         .unwrap();
         assert_eq!(config.appearance.theme, Theme::Glass);
         assert_eq!(config.appearance.mode, ColorMode::Light);
-        assert!(config.appearance.window_effect);
+        assert_eq!(config.appearance.blur, 40);
         let text = serde_json::to_string(&config).unwrap();
-        assert!(
-            text.contains(r#""appearance":{"theme":"glass","mode":"light","windowEffect":true}"#)
-        );
+        assert!(text.contains(r#""appearance":{"theme":"glass","mode":"light","blur":40}"#));
     }
 
     #[test]
@@ -516,6 +524,15 @@ mod tests {
                 .unwrap();
         assert_eq!(config.appearance.theme, Theme::Classic);
         assert_eq!(config.appearance.mode, ColorMode::System);
+    }
+
+    #[test]
+    fn the_old_window_effect_switch_is_ignored() {
+        let config =
+            parse(r#"{ "version": 3, "appearance": { "theme": "glass", "windowEffect": true } }"#)
+                .unwrap();
+        assert_eq!(config.appearance.theme, Theme::Glass);
+        assert_eq!(config.appearance.blur, 100);
     }
 
     #[test]
