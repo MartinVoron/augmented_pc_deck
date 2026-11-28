@@ -30,6 +30,14 @@ export const DOCK_EVENT = "dock-state";
 export const NOTCH_LENGTH = 180;
 export const NOTCH_DEPTH = 32;
 
+/**
+ * Taille des « oreilles » de l'encoche : les coins creusés qui la raccordent au bord
+ * de l'écran, comme l'encoche d'un MacBook. Elles prennent place de chaque côté.
+ */
+export const NOTCH_EAR = 10;
+/** Marge laissée autour du panneau pour que le rebond du ressort ne soit pas coupé. */
+export const BOUNCE_ROOM = 16;
+
 /** Lit l'état actuel de l'ancrage. */
 export function getDockStatus(): Promise<DockStatus> {
   return call<DockStatus>("dock_status");

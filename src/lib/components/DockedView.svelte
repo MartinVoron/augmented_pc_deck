@@ -1,16 +1,22 @@
 <!--
-  Fenêtre ancrée sur un bord de l'écran, façon encoche de MacBook ou Dynamic Island.
-  - Repliée : une petite encoche noire collée au bord, avec le logo ou entièrement noire.
+  Fenêtre ancrée sur un bord de l'écran, dans le style de l'encoche d'un MacBook
+  (boring.notch) ou de la Dynamic Island d'un iPhone.
+  - Repliée : une petite encoche noire collée au bord, raccordée à l'écran par deux
+    coins creusés (« oreilles »), avec le logo ou entièrement noire.
   - Souris dessus : le Rust agrandit la fenêtre (transparente) à la taille du panneau,
-    puis l'encoche s'étire jusqu'à lui avec une animation et les tuiles apparaissent.
-  - Souris sortie : l'encoche se replie (même durée que CLOSE_ANIMATION_MS du Rust),
-    puis la fenêtre redevient petite.
+    puis l'encoche s'étire jusqu'à lui avec un ressort qui rebondit un peu, et les
+    tuiles apparaissent.
+  - Souris sortie : l'encoche se replie (ressort sans rebond, en moins de
+    CLOSE_ANIMATION_MS du Rust), puis la fenêtre redevient petite.
   - Le bouton Détacher remet la fenêtre normale.
   Le suivi de la souris se fait dans le Rust (src-tauri/src/dock.rs).
 -->
 <script lang="ts">
   import { PictureInPicture2 } from "@lucide/svelte";
-  import { NOTCH_DEPTH, NOTCH_LENGTH, setDockPanel } from "../dock";
+  import { prefersReducedMotion, Spring } from "svelte/motion";
+  import { innerHeight, innerWidth } from "svelte/reactivity/window";
+  import { setDockPanel } from "../dock";
+  import { CLOSE_SPRING, foldedSize, OPEN_SPRING, openSize, windowForPanel } from "../dock/island";
   import { panelLayout } from "../dock/panel";
   import { dock } from "../dock/state.svelte";
   import { pageToShow, sanitizePages } from "../grid/layout";
@@ -23,7 +29,6 @@
 
   let pages = $derived(sanitizePages(settings.config?.layout.pages));
   let page = $derived(pageToShow(pages, pageId));
-  let vertical = $derived(dock.edge === "left" || dock.edge === "right");
   let logo = $derived((settings.config?.window.notchStyle ?? "logo") === "logo");
   let layout = $derived(
     // Largeur de l'écran inconnue (0 hors de Tauri) : pas de limite.
@@ -36,7 +41,34 @@
 
   // Le Rust donne cette taille à la fenêtre quand le panneau s'ouvre.
   $effect(() => {
-    setDockPanel(layout.width, layout.height).catch((e: unknown) => logError("ancrage", e));
+    const size = windowForPanel(dock.edge, layout);
+    setDockPanel(size.width, size.height).catch((e: unknown) => logError("ancrage", e));
+  });
+
+  let folded = $derived(foldedSize(dock.edge));
+  let target = $derived(
+    dock.expanded
+      ? openSize(dock.edge, {
+          width: innerWidth.current ?? layout.width,
+          height: innerHeight.current ?? layout.height,
+        })
+      : folded,
+  );
+
+  /** Taille de l'encoche, animée par un ressort. */
+  const size = new Spring(foldedSize("top"), OPEN_SPRING);
+
+  $effect(() => {
+    const spring = dock.expanded ? OPEN_SPRING : CLOSE_SPRING;
+    size.stiffness = spring.stiffness;
+    size.damping = spring.damping;
+    void size.set(target, { instant: prefersReducedMotion.current });
+  });
+
+  // Changer de bord ne s'anime pas : l'encoche apparaît directement à sa place.
+  $effect(() => {
+    void dock.edge;
+    void size.set(foldedSize(dock.edge), { instant: true });
   });
 
   function popOut() {
@@ -48,34 +80,42 @@
   class="dock"
   data-edge={dock.edge}
   data-expanded={dock.expanded || undefined}
-  style:--notch-width="{vertical ? NOTCH_DEPTH : NOTCH_LENGTH}px"
-  style:--notch-height="{vertical ? NOTCH_LENGTH : NOTCH_DEPTH}px"
   style:--panel-width="{layout.width}px"
   style:--panel-height="{layout.height}px"
 >
-  <div class="island">
-    <div class="notch" aria-hidden="true">
-      {#if logo}<img src="/favicon.png" alt="" width="18" height="18" />{/if}
-    </div>
-    <div class="panel" inert={!dock.expanded} aria-hidden={!dock.expanded}>
-      <div class="bar">
-        {#if pages.length > 1}
-          <PageTabs currentId={page.id} {onselect} />
-        {:else}
-          <span class="name">{page.name}</span>
-        {/if}
-        <button
-          type="button"
-          class="pop-out"
-          aria-label="Détacher la fenêtre du bord de l'écran"
-          title="Détacher"
-          onclick={popOut}
-        >
-          <PictureInPicture2 size={16} />
-        </button>
+  <div
+    class="island"
+    style:width="{size.current.width}px"
+    style:height="{size.current.height}px"
+    data-folded-width={folded.width}
+    data-folded-height={folded.height}
+  >
+    <span class="ear start" aria-hidden="true"></span>
+    <span class="ear end" aria-hidden="true"></span>
+    <div class="body">
+      <div class="notch" aria-hidden="true">
+        {#if logo}<img src="/favicon.png" alt="" width="16" height="16" />{/if}
       </div>
-      <div class="tiles">
-        <Dashboard pageId={page.id} columns={layout.columns} />
+      <div class="panel" inert={!dock.expanded} aria-hidden={!dock.expanded}>
+        <div class="bar">
+          {#if pages.length > 1}
+            <PageTabs currentId={page.id} {onselect} />
+          {:else}
+            <span class="name">{page.name}</span>
+          {/if}
+          <button
+            type="button"
+            class="pop-out"
+            aria-label="Détacher la fenêtre du bord de l'écran"
+            title="Détacher"
+            onclick={popOut}
+          >
+            <PictureInPicture2 size={16} />
+          </button>
+        </div>
+        <div class="tiles">
+          <Dashboard pageId={page.id} columns={layout.columns} />
+        </div>
       </div>
     </div>
   </div>
@@ -83,16 +123,20 @@
 
 <style>
   .dock {
-    --radius-folded: 16px;
-    --radius-open: 24px;
-    --ease: cubic-bezier(0.32, 0.72, 0, 1);
-    --duration: 260ms;
+    --ear: 10px; /* NOTCH_EAR */
+    --radius-folded: 12px;
+    --radius-open: 28px;
+    --radius: var(--radius-folded);
 
     position: fixed;
     inset: 0;
     display: flex;
     justify-content: center;
     align-items: center;
+  }
+
+  .dock[data-expanded] {
+    --radius: var(--radius-open);
   }
 
   .dock[data-edge="top"] {
@@ -111,41 +155,107 @@
     justify-content: flex-end;
   }
 
+  /* Taille animée par le ressort (style width/height). */
   .island {
     position: relative;
     flex-shrink: 0;
-    width: var(--notch-width);
-    height: var(--notch-height);
-    overflow: hidden;
-    background: #000;
-    box-shadow: 0 0 0 1px rgb(255 255 255 / 6%);
-    transition:
-      width var(--duration) var(--ease),
-      height var(--duration) var(--ease),
-      border-radius var(--duration) var(--ease);
   }
 
-  [data-expanded] .island {
-    width: 100%;
-    height: 100%;
-    --radius-folded: var(--radius-open);
+  .body {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #000;
+    transition:
+      border-radius 300ms ease,
+      box-shadow 300ms ease;
+  }
+
+  [data-expanded] .body {
+    box-shadow: 0 10px 30px rgb(0 0 0 / 45%);
   }
 
   /* Seuls les coins tournés vers l'écran sont arrondis, comme une encoche. */
-  [data-edge="top"] .island {
-    border-radius: 0 0 var(--radius-folded) var(--radius-folded);
+  [data-edge="top"] .body {
+    border-radius: 0 0 var(--radius) var(--radius);
   }
 
-  [data-edge="bottom"] .island {
-    border-radius: var(--radius-folded) var(--radius-folded) 0 0;
+  [data-edge="bottom"] .body {
+    border-radius: var(--radius) var(--radius) 0 0;
   }
 
-  [data-edge="left"] .island {
-    border-radius: 0 var(--radius-folded) var(--radius-folded) 0;
+  [data-edge="left"] .body {
+    border-radius: 0 var(--radius) var(--radius) 0;
   }
 
-  [data-edge="right"] .island {
-    border-radius: var(--radius-folded) 0 0 var(--radius-folded);
+  [data-edge="right"] .body {
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  /* Oreilles : coins creusés qui raccordent l'encoche au bord de l'écran. */
+  .ear {
+    position: absolute;
+    width: var(--ear);
+    height: var(--ear);
+    --cut: transparent calc(var(--ear) - 0.5px), #000 var(--ear);
+  }
+
+  [data-edge="top"] .ear,
+  [data-edge="bottom"] .ear {
+    right: 100%;
+  }
+
+  [data-edge="top"] .ear.end,
+  [data-edge="bottom"] .ear.end {
+    right: auto;
+    left: 100%;
+  }
+
+  [data-edge="top"] .ear {
+    top: 0;
+    background: radial-gradient(circle at 0 100%, var(--cut));
+  }
+
+  [data-edge="top"] .ear.end {
+    background: radial-gradient(circle at 100% 100%, var(--cut));
+  }
+
+  [data-edge="bottom"] .ear {
+    bottom: 0;
+    background: radial-gradient(circle at 0 0, var(--cut));
+  }
+
+  [data-edge="bottom"] .ear.end {
+    background: radial-gradient(circle at 100% 0, var(--cut));
+  }
+
+  [data-edge="left"] .ear,
+  [data-edge="right"] .ear {
+    bottom: 100%;
+  }
+
+  [data-edge="left"] .ear.end,
+  [data-edge="right"] .ear.end {
+    bottom: auto;
+    top: 100%;
+  }
+
+  [data-edge="left"] .ear {
+    left: 0;
+    background: radial-gradient(circle at 100% 0, var(--cut));
+  }
+
+  [data-edge="left"] .ear.end {
+    background: radial-gradient(circle at 100% 100%, var(--cut));
+  }
+
+  [data-edge="right"] .ear {
+    right: 0;
+    background: radial-gradient(circle at 0 0, var(--cut));
+  }
+
+  [data-edge="right"] .ear.end {
+    background: radial-gradient(circle at 0 100%, var(--cut));
   }
 
   .notch {
@@ -171,8 +281,9 @@
     position: absolute;
     display: flex;
     flex-direction: column;
-    width: min(var(--panel-width), 100vw);
-    height: min(var(--panel-height), 100vh);
+    /* Taille du panneau ouvert, sans dépasser la fenêtre (BOUNCE_ROOM : 16 px). */
+    width: min(var(--panel-width), calc(100vw - 2 * var(--ear) - 16px));
+    height: min(var(--panel-height), calc(100vh - 16px));
     opacity: 0;
     transition: opacity 100ms ease;
   }
@@ -198,6 +309,8 @@
 
   [data-edge="left"] .panel,
   [data-edge="right"] .panel {
+    width: min(var(--panel-width), calc(100vw - 16px));
+    height: min(var(--panel-height), calc(100vh - 2 * var(--ear) - 16px));
     top: 50%;
     transform: translateY(-50%);
   }
@@ -258,7 +371,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .island,
+    .body,
     .notch,
     .panel {
       transition: none;

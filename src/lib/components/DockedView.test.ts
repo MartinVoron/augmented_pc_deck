@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NOTCH_DEPTH } from "../dock";
+import { foldedSize, windowForPanel } from "../dock/island";
 import { panelLayout } from "../dock/panel";
 import { dock } from "../dock/state.svelte";
 import type { TileConfig } from "../grid/defaultLayout";
@@ -67,20 +69,23 @@ describe("DockedView", () => {
 
   it("couchée en haut, debout sur les côtés", async () => {
     render(DockedView, { pageId: "home", onselect: () => {} });
-    expect(root().style.getPropertyValue("--notch-width")).toBe("180px");
-    expect(root().style.getPropertyValue("--notch-height")).toBe("32px");
+    const island = () => document.querySelector(".island") as HTMLElement;
+    expect(island().dataset.foldedWidth).toBe(String(foldedSize("top").width));
+    expect(island().style.height).toBe(`${NOTCH_DEPTH}px`);
+    expect(document.querySelectorAll(".ear")).toHaveLength(2);
 
     dock.edge = "right";
     await tick();
-    expect(root().style.getPropertyValue("--notch-width")).toBe("32px");
-    expect(root().style.getPropertyValue("--notch-height")).toBe("180px");
+    expect(island().dataset.foldedHeight).toBe(String(foldedSize("right").height));
+    expect(island().style.width).toBe(`${NOTCH_DEPTH}px`);
   });
 
   it("donne au Rust la taille des tuiles de la page", async () => {
     render(DockedView, { pageId: "home", onselect: () => {} });
     await tick();
 
-    const expected = panelLayout(["1x1", "2x2"], "top");
+    // Le panneau, plus les oreilles et la marge du rebond.
+    const expected = windowForPanel("top", panelLayout(["1x1", "2x2"], "top"));
     expect(mockedInvoke).toHaveBeenCalledWith("dock_set_panel", {
       width: expected.width,
       height: expected.height,
@@ -88,7 +93,7 @@ describe("DockedView", () => {
 
     dock.edge = "left";
     await tick();
-    const vertical = panelLayout(["1x1", "2x2"], "left");
+    const vertical = windowForPanel("left", panelLayout(["1x1", "2x2"], "left"));
     expect(mockedInvoke).toHaveBeenLastCalledWith("dock_set_panel", {
       width: vertical.width,
       height: vertical.height,
@@ -101,6 +106,12 @@ describe("DockedView", () => {
     await tick();
 
     expect(root().dataset.expanded).toBe("true");
+    // Le ressort étire l'encoche jusqu'au panneau.
+    await vi.waitFor(() =>
+      expect(
+        parseFloat((document.querySelector(".island") as HTMLElement).style.height),
+      ).toBeGreaterThan(NOTCH_DEPTH * 2),
+    );
     expect(screen.getByRole("region", { name: "Horloge" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "Tâches" })).toBeTruthy();
 
