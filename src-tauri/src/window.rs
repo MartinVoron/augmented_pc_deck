@@ -43,7 +43,14 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) {
 /// Fermer la fenêtre principale (rond rouge, Alt+F4) la masque dans la zone de
 /// notification au lieu de quitter : les minuteurs et notifications continuent.
 /// Pour quitter, utiliser « Quitter » dans le menu de l'icône.
+///
+/// Déplacer la fenêtre normale peut l'ancrer à un bord de l'écran (voir `dock`).
 pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
+    if let WindowEvent::Moved(_) = event {
+        if window.label() == MAIN {
+            crate::dock::on_moved(window.app_handle());
+        }
+    }
     if let WindowEvent::CloseRequested { api, .. } = event {
         if window.label() == MAIN {
             api.prevent_close();
