@@ -2,6 +2,8 @@ pub mod display;
 pub mod dock;
 pub mod error;
 pub mod http;
+#[cfg(target_os = "linux")]
+pub mod layer;
 pub mod logging;
 pub mod modules;
 pub mod notifications;
@@ -21,8 +23,8 @@ use tokens::TokenStore;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     logging::log_panics();
-    // Avant GTK : en session Wayland, passer par XWayland pour que l'encoche marche.
-    let xwayland = display::prefer_x11();
+    // Avant GTK : en session Wayland, choisir comment l'encoche se colle au bord.
+    let backend = display::setup();
     tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_notification::init())
@@ -49,6 +51,7 @@ pub fn run() {
             dock::dock_status,
             dock::dock_set_panel,
             dock::dock_set_notch,
+            dock::dock_pointer,
             window::window_autostart_set,
             tokens::tokens_status,
             tokens::tokens_set,
@@ -83,12 +86,21 @@ pub fn run() {
         ])
         .setup(move |app| {
             log::info!("démarrage de la version {}", env!("CARGO_PKG_VERSION"));
-            if xwayland {
-                log::info!(
+            match backend {
+                display::Backend::Wayland => {
+                    log::info!("session Wayland : encoche par le layer shell");
+                }
+                display::Backend::Xwayland => log::info!(
                     "session Wayland : affichage par XWayland (GDK_BACKEND=x11) pour l'encoche"
-                );
+                ),
+                display::Backend::Default => {}
             }
             settings::init(app.handle())?;
+            // La fenêtre est créée masquée (tauri.conf.json) : sous Wayland, l'encoche
+            // doit se coller au bord avant d'être affichée.
+            if !dock::shows_itself(app.handle()) {
+                window::show(app.handle());
+            }
             window::create_tray(app.handle())?;
             claude::start(app.handle());
             Ok(())
