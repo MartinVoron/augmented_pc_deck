@@ -1,4 +1,5 @@
 // Paramètres : lecture et enregistrement de la configuration (voir src-tauri/src/modules/settings).
+import type { AppearanceSettings } from "../../appearance";
 import type { DockEdge, NotchStyle } from "../../dock";
 import { call } from "../../tauri";
 import type { Shortcut } from "../launcher";
@@ -73,6 +74,8 @@ export interface Config {
     /** Notification pour chaque nouveau message. */
     notifyNew: boolean;
   };
+  /** Thème et mode clair ou sombre (absents d'une ancienne configuration). */
+  appearance?: AppearanceSettings;
 }
 
 /** Lit la configuration actuelle. */

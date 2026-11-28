@@ -22,6 +22,7 @@ pub struct Config {
     pub layout: Layout,
     pub github: GithubSettings,
     pub gmail: GmailSettings,
+    pub appearance: AppearanceSettings,
 }
 
 impl Default for Config {
@@ -33,6 +34,7 @@ impl Default for Config {
             layout: Layout::default(),
             github: GithubSettings::default(),
             gmail: GmailSettings::default(),
+            appearance: AppearanceSettings::default(),
         }
     }
 }
@@ -109,6 +111,40 @@ pub enum NotchStyle {
     #[default]
     #[serde(other)]
     Logo,
+}
+
+/// Apparence de l'interface : thème, mode clair ou sombre, effet de fenêtre.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct AppearanceSettings {
+    pub theme: Theme,
+    pub mode: ColorMode,
+    /// Flou natif de Windows 11 (Mica) sous la fenêtre, pour le thème Verre.
+    pub window_effect: bool,
+}
+
+/// Thème de l'interface. Une valeur inconnue revient à `classic`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    /// Tuiles translucides et floutées sur un fond coloré.
+    Glass,
+    /// Thème sombre d'origine.
+    #[default]
+    #[serde(other)]
+    Classic,
+}
+
+/// Mode clair ou sombre. Une valeur inconnue revient à `system`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ColorMode {
+    Dark,
+    Light,
+    /// Suit le réglage clair ou sombre de Windows.
+    #[default]
+    #[serde(other)]
+    System,
 }
 
 /// Réglages du module GitHub.
@@ -450,6 +486,36 @@ mod tests {
         let kinds: Vec<&str> = pages[0].tiles.iter().map(|t| t.kind.as_str()).collect();
         assert_eq!(kinds, ["clock", "weather", "todos"]);
         assert_eq!(pages.iter().map(|p| p.tiles.len()).sum::<usize>(), 10);
+    }
+
+    #[test]
+    fn appearance_defaults_to_the_classic_theme_and_reads_back() {
+        let config = parse(r#"{ "version": 3 }"#).unwrap();
+        assert_eq!(config.appearance, AppearanceSettings::default());
+        assert_eq!(config.appearance.theme, Theme::Classic);
+        assert_eq!(config.appearance.mode, ColorMode::System);
+        assert!(!config.appearance.window_effect);
+
+        let config = parse(
+            r#"{ "version": 3, "appearance": { "theme": "glass", "mode": "light", "windowEffect": true } }"#,
+        )
+        .unwrap();
+        assert_eq!(config.appearance.theme, Theme::Glass);
+        assert_eq!(config.appearance.mode, ColorMode::Light);
+        assert!(config.appearance.window_effect);
+        let text = serde_json::to_string(&config).unwrap();
+        assert!(
+            text.contains(r#""appearance":{"theme":"glass","mode":"light","windowEffect":true}"#)
+        );
+    }
+
+    #[test]
+    fn unknown_appearance_values_fall_back_to_the_defaults() {
+        let config =
+            parse(r#"{ "version": 3, "appearance": { "theme": "neon", "mode": "sepia" } }"#)
+                .unwrap();
+        assert_eq!(config.appearance.theme, Theme::Classic);
+        assert_eq!(config.appearance.mode, ColorMode::System);
     }
 
     #[test]
