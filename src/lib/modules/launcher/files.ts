@@ -1,8 +1,8 @@
-// Choix de fichiers pour le lanceur : sélecteur de Windows et glisser-déposer.
+// Choix de fichiers pour le lanceur : sélecteur du système et glisser-déposer.
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 
-/** Ouvre le sélecteur de Windows. Renvoie le chemin choisi, ou `null` si annulé. */
+/** Ouvre le sélecteur de fichiers du système. Renvoie le chemin choisi, ou `null` si annulé. */
 export async function pickPath(kind: "file" | "folder" | "image"): Promise<string | null> {
   const path = await open({
     directory: kind === "folder",

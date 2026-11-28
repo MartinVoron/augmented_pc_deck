@@ -149,9 +149,15 @@ La tuile **Raccourcis** lance en un clic un programme, un fichier, un dossier ou
 
 ![Fenêtre de modification d'un raccourci](images/raccourcis-modifier.png)
 
-Sous Linux, les adresses, fichiers et dossiers s'ouvrent avec l'application associée. Le
-lancement d'un programme ou d'un fichier `.desktop` (menu des applications) arrive bientôt
-([#83](https://github.com/MartinVoron/augmented_pc_deck/issues/83)).
+Sous Linux :
+
+- pour une application installée, choisissez son fichier `.desktop`, dans
+  `/usr/share/applications` (ou `~/.local/share/applications`, et
+  `/var/lib/flatpak/exports/share/applications` pour Flatpak). La tuile lance
+  l'application et affiche son icône ;
+- un fichier exécutable (programme, script, `.AppImage`) est lancé directement, avec ses
+  arguments ;
+- les adresses, fichiers et dossiers s'ouvrent avec l'application associée.
 
 Chaque tuile Raccourcis a sa propre liste : vous pouvez en mettre une par page (outils
 de travail, jeux, dossiers…). Si une cible a été déplacée ou supprimée, la tuile le dit
