@@ -166,6 +166,10 @@ l'encoche d'un MacBook ou la Dynamic Island d'un iPhone :
   droite du panneau ouvert. La fenêtre reprend sa taille et sa place d'avant.
 - L'ancrage en glissant se coupe dans les paramètres (« Ancrer en lâchant la fenêtre
   contre un bord »).
+- **Sous Linux en session Wayland**, l'application passe par XWayland (`GDK_BACKEND=x11`) :
+  Wayland ne laisse pas une application se placer au bord de l'écran ni suivre la souris.
+  Avec un zoom fractionnaire (125 %, 150 %), le rendu peut être un peu flou. Pour garder
+  Wayland malgré tout, lancer l'application avec `GDK_BACKEND=wayland`.
 
 ## Jetons de connexion
 
