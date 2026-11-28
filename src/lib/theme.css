@@ -82,7 +82,10 @@
   --tile-radius: 22px;
   --tile-gap: 14px;
   --tile-accent-width: 1px;
-  --tile-backdrop: blur(36px) saturate(180%);
+  /* Niveau de flou de 0 à 1, réglé dans Paramètres → Apparence (1 par défaut). */
+  --glass-level: 1;
+  --tile-backdrop: blur(calc(var(--glass-level) * 36px))
+    saturate(calc(100% + var(--glass-level) * 80%));
   --tile-title-size: 0.75rem;
   --tile-title-transform: uppercase;
   --tile-title-spacing: 0.05em;
@@ -121,8 +124,8 @@
     radial-gradient(70% 70% at 70% 100%, #10a88c 0%, transparent 60%),
     radial-gradient(60% 60% at 15% 95%, #8a4ff0 0%, transparent 60%), #1b1533;
   --titlebar-bg: transparent;
-  --tile-bg: rgb(30 28 48 / 38%);
-  --tile-bg-hover: rgb(40 38 62 / 44%);
+  --tile-bg: rgb(30 28 48 / calc(6% + var(--glass-level) * 32%));
+  --tile-bg-hover: rgb(40 38 62 / calc(10% + var(--glass-level) * 34%));
   --tile-border: rgb(255 255 255 / 16%);
   --tile-accent-color: rgb(255 255 255 / 30%);
   --tile-shadow: 0 10px 40px rgb(0 0 0 / 25%), inset 0 1px 0 rgb(255 255 255 / 10%);
@@ -157,8 +160,8 @@
     radial-gradient(50% 60% at 100% 10%, #cfe0ff 0%, transparent 70%),
     radial-gradient(60% 60% at 60% 100%, #d2f3e8 0%, transparent 70%), #f2f2f7;
   --titlebar-bg: transparent;
-  --tile-bg: rgb(255 255 255 / 68%);
-  --tile-bg-hover: rgb(255 255 255 / 82%);
+  --tile-bg: rgb(255 255 255 / calc(14% + var(--glass-level) * 54%));
+  --tile-bg-hover: rgb(255 255 255 / calc(24% + var(--glass-level) * 58%));
   --tile-border: rgb(255 255 255 / 85%);
   --tile-accent-color: rgb(255 255 255 / 95%);
   --tile-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 12px 32px rgb(0 0 0 / 8%);
@@ -168,13 +171,4 @@
   --tab-active-shadow: 0 3px 8px rgb(0 0 0 / 12%), 0 0 1px rgb(0 0 0 / 10%);
   --tab-hover-bg: rgb(0 0 0 / 5%);
   --button-bg: rgb(255 255 255 / 70%);
-}
-
-/* Flou natif de Windows 11 sous la fenêtre : le fond peint devient un simple voile. */
-:root[data-theme="glass"][data-scheme="dark"][data-window-effect] {
-  --app-bg: rgb(20 16 40 / 35%);
-}
-
-:root[data-theme="glass"][data-scheme="light"][data-window-effect] {
-  --app-bg: rgb(245 245 250 / 40%);
 }

@@ -1,4 +1,4 @@
-<!-- Section « Apparence » : thème, mode clair ou sombre et flou de la fenêtre. -->
+<!-- Section « Apparence » : thème, mode clair ou sombre et flou des tuiles. -->
 <script lang="ts">
   import {
     MODE_LABELS,
@@ -8,13 +8,22 @@
     type ColorMode,
     type Theme,
   } from "../../appearance";
-  import Toggle from "../../components/Toggle.svelte";
+  import { blurPreview } from "../../appearance/state.svelte";
   import { settings, updateSettings } from "./state.svelte";
 
   let appearance = $derived(sanitizeAppearance(settings.config?.appearance));
+  /** Valeur affichée : celle du curseur en cours de réglage, sinon celle enregistrée. */
+  let blur = $derived(blurPreview.value ?? appearance.blur);
 
-  function change(patch: Partial<AppearanceSettings>) {
-    void updateSettings(
+  /** Le curseur est lâché : on enregistre, puis on revient à la valeur enregistrée. */
+  async function saveBlur(value: number) {
+    blurPreview.value = value;
+    await change({ blur: value });
+    blurPreview.value = null;
+  }
+
+  function change(patch: Partial<AppearanceSettings>): Promise<void> {
+    return updateSettings(
       (config) => (config.appearance = { ...sanitizeAppearance(config.appearance), ...patch }),
     );
   }
@@ -56,16 +65,31 @@
     <p class="hint">Le thème Classique n'existe qu'en sombre.</p>
   {/if}
 
-  <h3>Fenêtre</h3>
-  <Toggle
-    label="Flouter le bureau sous la fenêtre"
-    checked={appearance.windowEffect}
-    disabled={appearance.theme !== "glass"}
-    onchange={(windowEffect) => change({ windowEffect })}
-  />
+  <h3>Flou</h3>
+  <div class="field">
+    <label for="glass-blur">Flou des tuiles</label>
+    <span class="slider">
+      <input
+        id="glass-blur"
+        type="range"
+        min="0"
+        max="100"
+        step="5"
+        value={blur}
+        disabled={appearance.theme !== "glass"}
+        aria-valuetext="{blur} %"
+        oninput={(event) => (blurPreview.value = Number(event.currentTarget.value))}
+        onchange={(event) => saveBlur(Number(event.currentTarget.value))}
+      />
+      <output for="glass-blur">{blur} %</output>
+    </span>
+  </div>
   <p class="hint">
-    Avec le thème Verre, le fond d'écran de Windows apparaît flouté derrière les tuiles (effet
-    Mica). Windows 11 uniquement.
+    {#if appearance.theme === "glass"}
+      100 % : tuiles en verre dépoli. 0 % : tuiles transparentes, sans flou.
+    {:else}
+      Le flou ne concerne que le thème Verre.
+    {/if}
   </p>
 {/if}
 
@@ -174,6 +198,30 @@
     color: var(--color-text);
     font: inherit;
     cursor: pointer;
+  }
+
+  .slider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  input[type="range"] {
+    width: 12rem;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  input[type="range"]:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  output {
+    min-width: 3.5rem;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
 
   select:disabled {

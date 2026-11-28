@@ -1,4 +1,4 @@
-// Apparence de l'interface : thème, mode clair ou sombre et effet de fenêtre
+// Apparence de l'interface : thème, mode clair ou sombre et niveau de flou
 // (enregistrés dans la configuration, voir src-tauri/src/modules/settings/config.rs).
 
 /** Thème de l'interface. */
@@ -13,15 +13,21 @@ export type ColorScheme = "dark" | "light";
 export interface AppearanceSettings {
   theme: Theme;
   mode: ColorMode;
-  /** Flou natif de Windows 11 (Mica) sous la fenêtre, pour le thème Verre. */
-  windowEffect: boolean;
+  /** Flou des tuiles du thème Verre, en pourcentage : 0 transparent, 100 flou complet. */
+  blur: number;
 }
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   theme: "classic",
   mode: "system",
-  windowEffect: false,
+  blur: 100,
 };
+
+/** Ramène un niveau de flou entre 0 et 100 (100 s'il est absent ou invalide). */
+export function clampBlur(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_APPEARANCE.blur;
+  return Math.round(Math.min(100, Math.max(0, value)));
+}
 
 /** Nom de chaque thème, pour les paramètres. */
 export const THEME_LABELS: Record<Theme, string> = {
@@ -40,7 +46,7 @@ export const MODE_LABELS: Record<ColorMode, string> = {
 export function sanitizeAppearance(value?: Partial<AppearanceSettings> | null): AppearanceSettings {
   const theme = value?.theme && value.theme in THEME_LABELS ? value.theme : "classic";
   const mode = value?.mode && value.mode in MODE_LABELS ? value.mode : "system";
-  return { theme, mode, windowEffect: value?.windowEffect === true };
+  return { theme, mode, blur: clampBlur(value?.blur) };
 }
 
 /**
@@ -57,13 +63,13 @@ export function resolveScheme(appearance: AppearanceSettings, systemDark: boolea
 export interface AppliedAppearance {
   theme: Theme;
   scheme: ColorScheme;
-  /** Effet Mica sous la fenêtre. */
-  windowEffect: boolean;
+  /** Niveau de flou des tuiles, de 0 à 100. */
+  blur: number;
 }
 
 /**
- * Apparence à appliquer. Ancrée en encoche, la fenêtre garde le thème Classique
- * et aucun effet : l'encoche a son propre dessin, transparent autour.
+ * Apparence à appliquer. Ancrée en encoche, la fenêtre garde le thème Classique :
+ * l'encoche a son propre dessin, transparent autour.
  */
 export function appliedAppearance(
   value: Partial<AppearanceSettings> | null | undefined,
@@ -71,11 +77,11 @@ export function appliedAppearance(
   docked: boolean,
 ): AppliedAppearance {
   const appearance = sanitizeAppearance(value);
-  if (docked) return { theme: "classic", scheme: "dark", windowEffect: false };
+  if (docked) return { theme: "classic", scheme: "dark", blur: DEFAULT_APPEARANCE.blur };
   return {
     theme: appearance.theme,
     scheme: resolveScheme(appearance, systemDark),
-    windowEffect: appearance.theme === "glass" && appearance.windowEffect,
+    blur: appearance.blur,
   };
 }
 
@@ -83,5 +89,6 @@ export function appliedAppearance(
 export function applyToDocument(root: HTMLElement, applied: AppliedAppearance): void {
   root.dataset.theme = applied.theme;
   root.dataset.scheme = applied.scheme;
-  root.toggleAttribute("data-window-effect", applied.windowEffect);
+  // De 0 à 1 : theme.css en déduit le flou et l'opacité des tuiles du thème Verre.
+  root.style.setProperty("--glass-level", String(applied.blur / 100));
 }

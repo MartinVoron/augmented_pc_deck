@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Config } from ".";
 import AppearanceSection from "./AppearanceSection.svelte";
+import { blurPreview } from "../../appearance/state.svelte";
 import { loadSettings } from "./state.svelte";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -41,28 +42,49 @@ describe("AppearanceSection", () => {
     );
     const mode = screen.getByRole("combobox", { name: "Clair ou sombre" }) as HTMLSelectElement;
     expect(mode.disabled).toBe(true);
-    const blur = screen.getByRole("switch", { name: "Flouter le bureau sous la fenêtre" });
-    expect((blur as HTMLInputElement).disabled).toBe(true);
+    const blur = screen.getByRole("slider", { name: "Flou des tuiles" }) as HTMLInputElement;
+    expect(blur.disabled).toBe(true);
+    expect(blur.value).toBe("100");
+    expect(screen.queryByRole("switch")).toBeNull();
   });
 
-  it("enregistre le thème Verre, puis le mode et le flou", async () => {
+  it("enregistre le thème Verre, puis le mode", async () => {
     render(AppearanceSection);
 
     await fireEvent.click(screen.getByRole("radio", { name: "Verre" }));
-    expect(savedConfig().appearance).toEqual({
-      theme: "glass",
-      mode: "system",
-      windowEffect: false,
-    });
+    expect(savedConfig().appearance).toEqual({ theme: "glass", mode: "system", blur: 100 });
 
     const mode = screen.getByRole("combobox", { name: "Clair ou sombre" }) as HTMLSelectElement;
     expect(mode.disabled).toBe(false);
     await fireEvent.change(mode, { target: { value: "light" } });
     expect(savedConfig().appearance?.mode).toBe("light");
+  });
 
-    await fireEvent.click(
-      screen.getByRole("switch", { name: "Flouter le bureau sous la fenêtre" }),
-    );
-    expect(savedConfig().appearance).toEqual({ theme: "glass", mode: "light", windowEffect: true });
+  it("affiche le flou en direct et ne l'enregistre qu'au lâcher du curseur", async () => {
+    render(AppearanceSection);
+    await fireEvent.click(screen.getByRole("radio", { name: "Verre" }));
+    const saves = () => mockedInvoke.mock.calls.filter(([c]) => c === "settings_save").length;
+    const before = saves();
+
+    const blur = screen.getByRole("slider", { name: "Flou des tuiles" }) as HTMLInputElement;
+    expect(blur.disabled).toBe(false);
+    await fireEvent.input(blur, { target: { value: "30" } });
+    expect(blurPreview.value).toBe(30);
+    expect(screen.getByText("30 %")).toBeTruthy();
+    expect(saves()).toBe(before);
+
+    await fireEvent.change(blur, { target: { value: "30" } });
+    await vi.waitFor(() => expect(blurPreview.value).toBeNull());
+    expect(saves()).toBe(before + 1);
+    expect(savedConfig().appearance).toEqual({ theme: "glass", mode: "system", blur: 30 });
+    expect(screen.getByText("30 %")).toBeTruthy();
+  });
+
+  it("descend jusqu'à 0 % (tuiles transparentes)", async () => {
+    render(AppearanceSection);
+    await fireEvent.click(screen.getByRole("radio", { name: "Verre" }));
+    const blur = screen.getByRole("slider", { name: "Flou des tuiles" });
+    await fireEvent.change(blur, { target: { value: "0" } });
+    await vi.waitFor(() => expect(savedConfig().appearance?.blur).toBe(0));
   });
 });
