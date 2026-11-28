@@ -1,4 +1,4 @@
-//! Service commun d'envoi des notifications Windows.
+//! Service commun d'envoi des notifications du système (Windows ou bureau Linux).
 //!
 //! Les modules (minuteurs, Claude, GitHub, Gmail) passent tous par [`notify`].
 //! Un interrupteur global permet de couper toutes les notifications d'un coup.
@@ -13,7 +13,7 @@ use tauri_plugin_notification::NotificationExt;
 use crate::error::{AppError, AppResult};
 use crate::modules::settings::ConfigStore;
 
-/// Son joué avec la notification (sons standards de Windows).
+/// Son joué avec la notification (sons standards du système).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Sound {
@@ -29,12 +29,33 @@ pub enum Sound {
 
 impl Sound {
     /// Nom du son attendu par Windows.
+    #[cfg_attr(not(windows), allow(dead_code))]
     fn windows_name(self) -> &'static str {
         match self {
             Self::Default => "Default",
             Self::Reminder => "Reminder",
             Self::Mail => "Mail",
             Self::Alarm => "Alarm",
+        }
+    }
+
+    /// Nom du son dans le thème de sons freedesktop (bureaux Linux).
+    #[cfg_attr(windows, allow(dead_code))]
+    fn freedesktop_name(self) -> &'static str {
+        match self {
+            Self::Default => "message-new-instant",
+            Self::Reminder => "complete",
+            Self::Mail => "message-new-email",
+            Self::Alarm => "alarm-clock-elapsed",
+        }
+    }
+
+    /// Nom du son pour le système en cours.
+    fn system_name(self) -> &'static str {
+        if cfg!(windows) {
+            self.windows_name()
+        } else {
+            self.freedesktop_name()
         }
     }
 }
@@ -82,7 +103,7 @@ fn validate(notification: &Notification) -> AppResult<()> {
     Ok(())
 }
 
-/// Envoie une notification Windows, sauf si les notifications sont coupées.
+/// Envoie une notification, sauf si les notifications sont coupées.
 ///
 /// Renvoie `true` si la notification a été envoyée, `false` si elle a été ignorée.
 pub fn notify<R: Runtime>(app: &AppHandle<R>, notification: &Notification) -> AppResult<bool> {
@@ -97,7 +118,7 @@ pub fn notify<R: Runtime>(app: &AppHandle<R>, notification: &Notification) -> Ap
         .title(&notification.title)
         .body(&notification.body);
     if let Some(sound) = notification.sound {
-        builder = builder.sound(sound.windows_name());
+        builder = builder.sound(sound.system_name());
     }
     builder
         .show()
@@ -142,6 +163,18 @@ mod tests {
             body: "Le minuteur est terminé".into(),
             sound: None,
         }
+    }
+
+    #[test]
+    fn each_sound_has_a_name_on_every_system() {
+        assert_eq!(Sound::Mail.windows_name(), "Mail");
+        assert_eq!(Sound::Mail.freedesktop_name(), "message-new-email");
+        let expected = if cfg!(windows) {
+            "Alarm"
+        } else {
+            "alarm-clock-elapsed"
+        };
+        assert_eq!(Sound::Alarm.system_name(), expected);
     }
 
     #[test]

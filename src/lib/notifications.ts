@@ -1,6 +1,6 @@
 import { call } from "./tauri";
 
-/** Sons standards de Windows (voir `src-tauri/src/notifications.rs`). */
+/** Sons standards du système (voir `src-tauri/src/notifications.rs`). */
 export type NotificationSound = "default" | "reminder" | "mail" | "alarm";
 
 export interface AppNotification {
@@ -11,7 +11,7 @@ export interface AppNotification {
 }
 
 /**
- * Envoie une notification Windows. Renvoie `false` si les notifications sont coupées.
+ * Envoie une notification du système. Renvoie `false` si les notifications sont coupées.
  */
 export function sendNotification(notification: AppNotification): Promise<boolean> {
   return call<boolean>("notifications_send", { notification });

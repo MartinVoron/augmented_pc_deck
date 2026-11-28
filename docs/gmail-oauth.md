@@ -54,7 +54,8 @@ elle reste en mode « Test », réservée aux utilisateurs test que vous avez aj
    vous pouvez fermer l'onglet.
 
 L'ID client, le code secret et l'accès accordé par Google sont rangés dans le
-**Gestionnaire d'identification Windows** (entrée `augmented-pc-deck`, compte `gmail`).
+**Gestionnaire d'identification Windows** (entrée `augmented-pc-deck`, compte `gmail`),
+ou dans le trousseau du bureau sous Linux.
 Ils ne sont jamais écrits dans `config.json` ni dans le journal.
 
 ## Bon à savoir

@@ -160,7 +160,8 @@ mod platform {
 
     use super::Rgba;
 
-    /// Hors de Windows (tests sous Linux), pas d'icône : la tuile affiche l'icône du module.
+    /// Hors de Windows, pas d'icône pour un fichier quelconque : la tuile affiche l'icône
+    /// du module. (Les fichiers `.desktop` ont la leur, voir `desktop.rs`.)
     pub fn extract(_path: &Path, _size: i32) -> Option<Rgba> {
         None
     }

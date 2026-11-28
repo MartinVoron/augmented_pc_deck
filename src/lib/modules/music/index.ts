@@ -1,4 +1,4 @@
-// Musique : morceau en cours, via les sessions média de Windows
+// Musique : morceau en cours, via les sessions média de Windows (MPRIS sous Linux)
 // (voir src-tauri/src/modules/music).
 import { call } from "../../tauri";
 
