@@ -47,9 +47,18 @@ describe("watchDock", () => {
     await vi.waitFor(() => expect(handler).toBeDefined());
 
     handler?.({ payload: { edge: "top", expanded: true } });
-    expect(dock).toEqual({ edge: "top", expanded: true });
+    expect(dock).toEqual({ edge: "top", expanded: true, refused: false });
     handler?.({ payload: { edge: "top", expanded: false } });
     expect(dock.expanded).toBe(false);
+    stop();
+  });
+
+  it("signale que le bureau a refusé de placer l'encoche", async () => {
+    const stop = watchDock();
+    await vi.waitFor(() => expect(handler).toBeDefined());
+
+    handler?.({ payload: { edge: "none", expanded: false, refused: true } });
+    expect(dock.refused).toBe(true);
     stop();
   });
 

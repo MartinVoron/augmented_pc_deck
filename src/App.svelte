@@ -45,6 +45,13 @@
 {:else}
   <div class="window">
     <TitleBar />
+    {#if dock.refused}
+      <p class="dock-refused" role="status">
+        Ton bureau ne laisse pas l'application se placer contre le bord de l'écran : l'encoche ne
+        peut pas s'y coller, la fenêtre est revenue en mode normal.
+        <button type="button" onclick={() => (dock.refused = false)}>OK</button>
+      </p>
+    {/if}
     <div class="content">
       {#if showSettings}
         <SettingsScreen onclose={() => (showSettings = false)} />
@@ -88,6 +95,29 @@
 {/if}
 
 <style>
+  .dock-refused {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .dock-refused button {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
   .window {
     display: flex;
     flex-direction: column;
