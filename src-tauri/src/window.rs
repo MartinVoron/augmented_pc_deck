@@ -63,7 +63,7 @@ pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
 }
 
 /// Affiche la fenêtre principale et lui donne le focus.
-fn show<R: Runtime>(app: &AppHandle<R>) {
+pub fn show<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window(MAIN) {
         let _ = window.unminimize();
         let _ = window.show();
@@ -77,15 +77,17 @@ fn hide<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Icône dans la zone de notification, avec le menu Afficher, Masquer et Quitter.
+/// Icône dans la zone de notification, avec le menu Afficher, Masquer, Détacher
+/// l'encoche (retour à la fenêtre normale) et Quitter.
 /// Sous Windows, un clic gauche sur l'icône affiche la fenêtre. Sous Linux
 /// (AppIndicator), l'icône ne reçoit pas les clics : tout clic ouvre le menu, qui
 /// commence donc par « Afficher ».
 pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let show_item = MenuItem::with_id(app, "show", "Afficher", true, None::<&str>)?;
     let hide_item = MenuItem::with_id(app, "hide", "Masquer", true, None::<&str>)?;
+    let undock_item = MenuItem::with_id(app, "undock", "Détacher l'encoche", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &hide_item, &quit_item])?;
+    let menu = Menu::with_items(app, &[&show_item, &hide_item, &undock_item, &quit_item])?;
 
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("Augmented PC Deck")
@@ -94,6 +96,12 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => show(app),
             "hide" => hide(app),
+            "undock" => {
+                if let Err(e) = crate::dock::undock(app) {
+                    log::error!("impossible de détacher l'encoche : {e}");
+                }
+                show(app);
+            }
             "quit" => app.exit(0),
             _ => {}
         })

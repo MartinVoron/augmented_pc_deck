@@ -9,6 +9,12 @@
 //! quand elle sort du panneau, il se replie. La fenêtre n'est jamais redimensionnée
 //! pendant les animations : pas de saut ni de clignotement.
 //!
+//! Sous Linux, la position de la souris n'est pas fiable (XWayland ne la donne
+//! que quand elle est sur une fenêtre de l'application) et le bureau peut refuser
+//! de placer la fenêtre. La fenêtre y garde donc la taille de l'encoche quand elle
+//! est repliée (sans laisser passer les clics), et c'est l'interface qui dit quand
+//! la souris entre dans la fenêtre ou en sort (commande [`dock_pointer`]).
+//!
 //! L'interface est prévenue de chaque changement par l'événement [`EVENT`].
 //!
 //! Lâcher la fenêtre normale avec la souris collée à un bord de l'écran l'ancre à
@@ -52,10 +58,23 @@ pub const OPEN_DELAY_MS: u64 = 80;
 /// Temps hors du panneau avant de le replier : un écart de souris ne le ferme pas.
 pub const CLOSE_DELAY_MS: u64 = 300;
 
+/// Fenêtre repliée de la taille du panneau, qui laisse passer les clics, et souris
+/// suivie par le Rust. Sinon (Linux) : fenêtre de la taille de l'encoche, et souris
+/// suivie par l'interface.
+const CLICK_THROUGH: bool = cfg!(not(target_os = "linux"));
+/// Sans `CLICK_THROUGH`, durée de l'animation de fermeture dans l'interface : la
+/// fenêtre ne rapetisse qu'après, pour ne pas couper l'animation.
+const CLOSE_ANIMATION_MS: u64 = 300;
+
 /// Distance au bord de l'écran, en pixels physiques, à laquelle lâcher la fenêtre l'ancre.
 pub const DRAG_EDGE_MARGIN: f64 = 3.0;
 /// Temps sans mouvement après lequel un glisser de fenêtre est considéré fini.
 const DRAG_QUIET_MS: u64 = 250;
+/// Écart permis entre la souris et la fenêtre à la fin d'un glisser, en pixels
+/// physiques (le bureau a pu aimanter la fenêtre).
+const DRAG_WINDOW_MARGIN: u32 = 24;
+/// Temps après le démarrage pendant lequel les déplacements sont ceux du bureau.
+const STARTUP_GRACE: Duration = Duration::from_secs(2);
 /// Temps pendant lequel les déplacements faits par l'ancrage lui-même sont ignorés.
 const SELF_MOVE_MS: u64 = 800;
 
@@ -186,6 +205,65 @@ impl Hover {
     }
 }
 
+/// Vérifie que le bureau a bien placé la fenêtre ancrée là où elle doit être :
+/// certains (COSMIC, Weston) placent eux-mêmes les fenêtres à leur ouverture.
+#[derive(Debug, Default)]
+pub struct Placement {
+    misplaced_ms: u64,
+    tries: u32,
+    refused: bool,
+}
+
+/// Temps pendant lequel la fenêtre peut être mal placée avant d'être replacée.
+const PLACEMENT_GRACE_MS: u64 = 400;
+/// Nombre de tentatives pour replacer la fenêtre avant d'abandonner.
+const PLACEMENT_TRIES: u32 = 5;
+
+/// Ce qu'il faut faire de la fenêtre ancrée, d'après sa position réelle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Placed {
+    /// Bien placée, ou mal placée depuis trop peu de temps pour s'inquiéter.
+    Fine,
+    /// Mal placée : la replacer.
+    Retry,
+    /// Toujours mal placée après plusieurs essais : le bureau refuse.
+    Refused,
+}
+
+impl Placement {
+    /// Tient compte de la position réelle `actual` de la fenêtre et de celle
+    /// voulue `target`, `elapsed_ms` après la lecture précédente.
+    pub fn check(&mut self, actual: Rect, target: Rect, elapsed_ms: u64) -> Placed {
+        if self.refused {
+            return Placed::Fine;
+        }
+        if (actual.x, actual.y) == (target.x, target.y) {
+            self.misplaced_ms = 0;
+            self.tries = 0;
+            return Placed::Fine;
+        }
+        self.misplaced_ms = self.misplaced_ms.saturating_add(elapsed_ms);
+        if self.misplaced_ms < PLACEMENT_GRACE_MS {
+            return Placed::Fine;
+        }
+        self.misplaced_ms = 0;
+        if self.tries < PLACEMENT_TRIES {
+            self.tries += 1;
+            return Placed::Retry;
+        }
+        self.refused = true;
+        log::warn!(
+            "le bureau ne laisse pas placer l'encoche contre le bord de l'écran \
+             (voulue en {},{}, placée en {},{}) : retour à la fenêtre normale",
+            target.x,
+            target.y,
+            actual.x,
+            actual.y
+        );
+        Placed::Refused
+    }
+}
+
 /// État envoyé à l'interface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -194,6 +272,9 @@ pub struct DockStatus {
     pub edge: DockEdge,
     /// Panneau ouvert (sinon : encoche repliée).
     pub expanded: bool,
+    /// Le bureau a refusé de placer l'encoche contre le bord : la fenêtre est
+    /// revenue en fenêtre normale.
+    pub refused: bool,
 }
 
 /// Taille et position de la fenêtre normale, pour y revenir en la détachant.
@@ -230,6 +311,12 @@ struct Inner {
     settled: Option<PhysicalPosition<i32>>,
     /// Jusqu'à quand ignorer les déplacements faits par l'ancrage lui-même.
     ignore_moves_until: Option<Instant>,
+    /// Souris dans la fenêtre, d'après l'interface (sans `CLICK_THROUGH`).
+    pointer_inside: bool,
+    /// Premier réglage appliqué (démarrage de l'application).
+    started: Option<Instant>,
+    /// Le bureau a refusé de placer l'encoche (voir [`Placement`]).
+    refused: bool,
 }
 
 /// Glisser de la fenêtre normale en cours.
@@ -244,37 +331,45 @@ impl Inner {
         DockStatus {
             edge: self.edge,
             expanded: self.expanded,
+            refused: self.refused,
         }
     }
 
-    /// Rectangle de la fenêtre ancrée : celui du panneau ouvert, replié ou non.
-    fn target(&self) -> Option<Rect> {
+    /// Rectangle de la fenêtre ancrée : celui du panneau ouvert, ou celui de
+    /// l'encoche quand elle est repliée et ne laisse pas passer les clics.
+    fn target(&self, click_through: bool) -> Option<Rect> {
         let (work, scale) = self.screen?;
         if self.edge == DockEdge::None {
             return None;
         }
-        let (w, h) = self.panel.unwrap_or(DEFAULT_PANEL);
-        Some(fit(
-            work,
-            self.edge,
-            to_physical(w, scale),
-            to_physical(h, scale),
-        ))
-    }
-
-    /// Zone où la souris ouvre le panneau ou le garde ouvert : l'encoche dessinée
-    /// par l'interface (centrée comme la fenêtre), ou tout le panneau ouvert.
-    fn hover_rect(&self) -> Option<Rect> {
-        if self.expanded {
-            return self.target();
-        }
-        let (work, scale) = self.screen?;
-        if self.edge == DockEdge::None {
-            return None;
-        }
-        let length = self.notch_length.unwrap_or(NOTCH_LENGTH);
-        let (width, height) = notch_size(self.edge, length, scale);
+        let (width, height) = if self.expanded || click_through {
+            let (w, h) = self.panel.unwrap_or(DEFAULT_PANEL);
+            (to_physical(w, scale), to_physical(h, scale))
+        } else {
+            self.notch(scale)
+        };
         Some(fit(work, self.edge, width, height))
+    }
+
+    /// Taille de l'encoche repliée, en pixels physiques.
+    fn notch(&self, scale: f64) -> (u32, u32) {
+        notch_size(self.edge, self.notch_length.unwrap_or(NOTCH_LENGTH), scale)
+    }
+
+    /// Zone où la souris ouvre le panneau ou le garde ouvert, dans la fenêtre
+    /// `window` telle qu'elle est vraiment à l'écran (le bureau a pu la placer
+    /// ailleurs) : l'encoche, dessinée par l'interface contre le bord et centrée
+    /// le long de celui-ci, ou toute la fenêtre quand le panneau est ouvert.
+    fn hover_rect(&self, window: Rect) -> Option<Rect> {
+        if self.edge == DockEdge::None {
+            return None;
+        }
+        if self.expanded {
+            return Some(window);
+        }
+        let scale = self.screen.map_or(1.0, |(_, scale)| scale);
+        let (width, height) = self.notch(scale);
+        Some(fit(window, self.edge, width, height))
     }
 }
 
@@ -299,19 +394,38 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
     };
     let state = app.state::<DockState>();
     let next = settings.dock;
-    let previous = {
+    let (previous, starting) = {
         let mut inner = state.lock();
+        let starting = inner.started.is_none();
+        inner.started.get_or_insert_with(Instant::now);
         inner.dock_on_drag = settings.dock_on_drag;
         if inner.edge != next {
             inner.drag = None;
             inner.ignore_moves_until = Some(Instant::now() + Duration::from_millis(SELF_MOVE_MS));
         }
-        inner.edge
+        (inner.edge, starting)
     };
     if previous == next {
         return next != DockEdge::None;
     }
 
+    // Sous Wayland, seule une fenêtre jamais affichée peut se coller au bord : pour
+    // l'ancrer en cours de route, l'application redémarre (réglage déjà enregistré).
+    if previous == DockEdge::None
+        && next != DockEdge::None
+        && crate::display::native_wayland()
+        && !starting
+    {
+        log::info!("fenêtre ancrée au bord de l'écran : redémarrage de l'application");
+        app.restart();
+    }
+    if next == DockEdge::None && crate::display::native_wayland() {
+        // Une fenêtre collée par le layer shell ne redevient pas une fenêtre
+        // ordinaire : l'application redémarre, en fenêtre normale (réglage déjà
+        // enregistré).
+        log::info!("fenêtre détachée du bord de l'écran : redémarrage de l'application");
+        app.restart();
+    }
     if next == DockEdge::None {
         let restore = {
             let mut inner = state.lock();
@@ -336,6 +450,7 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
         let mut inner = state.lock();
         inner.restore = inner.drag_restore.take().or(captured);
         inner.screen = screen;
+        inner.pointer_inside = false;
         inner.generation += 1;
         Some(inner.generation)
     } else {
@@ -345,12 +460,14 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, settings: &WindowSettings) -> bool 
         let mut inner = state.lock();
         inner.edge = next;
         inner.expanded = false;
-        (inner.target(), inner.status())
+        inner.refused = false;
+        (inner.target(CLICK_THROUGH), inner.status())
     };
+    attach_layer(&window, next);
     if let Some(rect) = target {
         set_rect(&window, rect);
     }
-    pass_clicks(&window, true);
+    pass_clicks(&window, CLICK_THROUGH);
     if let Some(generation) = generation {
         watch(app.clone(), generation);
     }
@@ -396,6 +513,17 @@ fn capture<R: Runtime>(window: &WebviewWindow<R>) -> Option<Restore> {
         size,
         maximized,
     })
+}
+
+/// `rect` agrandi de `margin` pixels de chaque côté.
+pub fn grown(rect: Rect, margin: u32) -> Rect {
+    let shift = i32::try_from(margin).unwrap_or(0);
+    Rect {
+        x: rect.x.saturating_sub(shift),
+        y: rect.y.saturating_sub(shift),
+        width: rect.width.saturating_add(2 * margin),
+        height: rect.height.saturating_add(2 * margin),
+    }
 }
 
 /// Ramène la fenêtre normale dans l'écran où elle était ancrée si elle ne tient
@@ -486,6 +614,33 @@ fn enter_dock<R: Runtime>(window: &WebviewWindow<R>) {
     log_failures("ancrage", steps);
 }
 
+/// Sous Wayland avec le layer shell, colle la fenêtre au bord `edge` de l'écran
+/// (voir `layer`). Ailleurs, rien à faire : la fenêtre se place elle-même.
+/// Au démarrage, la fenêtre n'est pas encore affichée : c'est ici qu'elle l'est.
+#[cfg(target_os = "linux")]
+fn attach_layer<R: Runtime>(window: &WebviewWindow<R>, edge: DockEdge) {
+    if !crate::display::native_wayland() {
+        return;
+    }
+    let target = window.clone();
+    // GTK ne s'utilise que depuis le fil principal.
+    let result = window.run_on_main_thread(move || {
+        let attached = target
+            .gtk_window()
+            .is_ok_and(|gtk_window| crate::layer::attach(&gtk_window, edge));
+        if !attached {
+            log::warn!("le bureau ne permet pas de coller l'encoche au bord de l'écran");
+        }
+        let _ = target.show();
+    });
+    if let Err(e) = result {
+        log::warn!("impossible de coller l'encoche au bord de l'écran : {e}");
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn attach_layer<R: Runtime>(_window: &WebviewWindow<R>, _edge: DockEdge) {}
+
 /// Rend à la fenêtre son aspect normal, sa taille et sa position d'avant l'ancrage.
 /// Renvoie la position donnée à la fenêtre, si elle est connue.
 fn leave_dock<R: Runtime>(
@@ -552,6 +707,17 @@ fn set_rect<R: Runtime>(window: &WebviewWindow<R>, rect: Rect) {
     }
 }
 
+fn window_rect<R: Runtime>(window: &WebviewWindow<R>) -> Option<Rect> {
+    let position = window.outer_position().ok()?;
+    let size = window.outer_size().ok()?;
+    Some(Rect {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+    })
+}
+
 fn emit<R: Runtime>(app: &AppHandle<R>, status: DockStatus) {
     if let Err(e) = app.emit(EVENT, status) {
         log::warn!("impossible de prévenir l'interface de l'ancrage : {e}");
@@ -559,21 +725,41 @@ fn emit<R: Runtime>(app: &AppHandle<R>, status: DockStatus) {
 }
 
 /// Ouvre ou replie le panneau, si l'ancrage `generation` est toujours en cours.
-/// Ouvert, le panneau reçoit les clics ; replié, ils passent à travers la fenêtre.
+/// Avec `CLICK_THROUGH`, le panneau ouvert reçoit les clics et l'encoche repliée
+/// les laisse passer. Sinon, la fenêtre grandit tout de suite à l'ouverture, et ne
+/// rapetisse qu'à la fin de l'animation de fermeture (voir [`shrink`]).
 fn set_expanded<R: Runtime>(app: &AppHandle<R>, generation: u64, expanded: bool) {
     let state = app.state::<DockState>();
-    let status = {
+    let (target, status) = {
         let mut inner = state.lock();
         if inner.generation != generation || inner.edge == DockEdge::None {
             return;
         }
         inner.expanded = expanded;
-        inner.status()
+        (inner.target(CLICK_THROUGH), inner.status())
     };
     if let Some(window) = app.get_webview_window(MAIN) {
-        pass_clicks(&window, !expanded);
+        if CLICK_THROUGH {
+            pass_clicks(&window, !expanded);
+        } else if let (true, Some(rect)) = (expanded, target) {
+            set_rect(&window, rect);
+        }
     }
     emit(app, status);
+}
+
+/// Remet la fenêtre à la taille de l'encoche si le panneau est toujours replié.
+fn shrink<R: Runtime>(app: &AppHandle<R>, generation: u64) {
+    let target = {
+        let inner = app.state::<DockState>().inner().lock();
+        if inner.generation != generation || inner.expanded {
+            return;
+        }
+        inner.target(CLICK_THROUGH)
+    };
+    if let (Some(window), Some(rect)) = (app.get_webview_window(MAIN), target) {
+        set_rect(&window, rect);
+    }
 }
 
 /// Suit la souris tant que l'ancrage `generation` dure.
@@ -582,29 +768,69 @@ fn watch<R: Runtime>(app: AppHandle<R>, generation: u64) {
         .name("suivi-encoche".into())
         .spawn(move || {
             let mut hover = Hover::default();
+            let mut clock: u64 = 0;
+            let mut shrink_at: Option<u64> = None;
+            let mut placement = Placement::default();
             loop {
                 thread::sleep(Duration::from_millis(POLL_MS));
-                let zone = {
+                clock += POLL_MS;
+                let Some(window) = app.get_webview_window(MAIN) else {
+                    return;
+                };
+                let actual = window_rect(&window);
+                let (zone, pointer_inside, target) = {
                     let inner = app.state::<DockState>().inner().lock();
                     if inner.generation != generation {
                         return;
                     }
                     hover.expanded = inner.expanded;
-                    inner.hover_rect()
+                    let zone = actual.and_then(|r| inner.hover_rect(r));
+                    (zone, inner.pointer_inside, inner.target(CLICK_THROUGH))
                 };
-                let Some(window) = app.get_webview_window(MAIN) else {
-                    return;
-                };
+                // Sous Wayland, la position n'est pas connue : le layer shell la tient.
+                let placed_by_app = !crate::display::native_wayland();
+                if let (true, Some(actual), Some(target)) = (placed_by_app, actual, target) {
+                    match placement.check(actual, target, POLL_MS) {
+                        Placed::Fine => {}
+                        Placed::Retry => set_rect(&window, target),
+                        Placed::Refused => {
+                            // Une encoche hors du bord ne s'ouvrirait pas au survol
+                            // et cacherait l'application : on revient à la normale.
+                            app.state::<DockState>().lock().refused = true;
+                            if let Err(e) = undock(&app) {
+                                log::error!("impossible de détacher l'encoche : {e}");
+                            }
+                            return;
+                        }
+                    }
+                }
                 if !window.is_visible().unwrap_or(false) {
                     continue;
                 }
-                // Sous Wayland, la position de la souris n'est pas toujours connue.
-                let Ok(cursor) = app.cursor_position() else {
-                    continue;
+                let inside = if CLICK_THROUGH {
+                    let Ok(cursor) = app.cursor_position() else {
+                        continue;
+                    };
+                    zone.is_some_and(|r| r.contains(cursor.x, cursor.y))
+                } else {
+                    pointer_inside
                 };
-                let inside = zone.is_some_and(|r| r.contains(cursor.x, cursor.y));
-                if let Some(expanded) = hover.update(inside, POLL_MS) {
-                    set_expanded(&app, generation, expanded);
+                match hover.update(inside, POLL_MS) {
+                    Some(true) => {
+                        shrink_at = None;
+                        set_expanded(&app, generation, true);
+                    }
+                    Some(false) => {
+                        if !CLICK_THROUGH {
+                            shrink_at = Some(clock + CLOSE_ANIMATION_MS);
+                        }
+                        set_expanded(&app, generation, false);
+                    }
+                    None => {}
+                }
+                if shrink_at.is_some_and(|at| clock >= at) {
+                    shrink_at = None;
+                    shrink(&app, generation);
                 }
             }
         });
@@ -621,11 +847,18 @@ pub fn on_moved<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(MAIN) else {
         return;
     };
+    // Sous Wayland, la souris n'est pas connue (elle est lue en 0,0, contre le
+    // bord) : glisser la fenêtre ne peut pas l'ancrer.
+    if crate::display::native_wayland() {
+        return;
+    }
     let now = Instant::now();
     let state = app.state::<DockState>();
     {
         let mut inner = state.lock();
-        let ignored = inner.ignore_moves_until.is_some_and(|until| now < until);
+        // Au démarrage, le bureau place lui-même la fenêtre : ce n'est pas un glisser.
+        let starting = inner.started.is_some_and(|at| at.elapsed() < STARTUP_GRACE);
+        let ignored = starting || inner.ignore_moves_until.is_some_and(|until| now < until);
         if inner.edge != DockEdge::None || !inner.dock_on_drag || ignored {
             return;
         }
@@ -675,6 +908,15 @@ fn finish_drag<R: Runtime>(app: &AppHandle<R>, drag: Drag) {
     let Ok(cursor) = app.cursor_position() else {
         return;
     };
+    // Un vrai glisser tient la fenêtre par sa barre de titre : la souris est dessus.
+    // Sinon (souris inconnue, lue en 0,0 sous XWayland), ce n'est pas un glisser.
+    let on_window = app
+        .get_webview_window(MAIN)
+        .and_then(|window| window_rect(&window))
+        .is_some_and(|rect| grown(rect, DRAG_WINDOW_MARGIN).contains(cursor.x, cursor.y));
+    if !on_window {
+        return;
+    }
     let Ok(Some(monitor)) = app.monitor_from_point(cursor.x, cursor.y) else {
         return;
     };
@@ -731,6 +973,12 @@ pub fn dock_status(state: State<'_, DockState>) -> DockStatus {
     state.lock().status()
 }
 
+/// Indique si la fenêtre s'affiche d'elle-même : collée par le layer shell, elle
+/// l'est à l'ancrage (voir [`attach_layer`]). Sinon, il faut l'afficher au démarrage.
+pub fn shows_itself<R: Runtime>(app: &AppHandle<R>) -> bool {
+    crate::display::native_wayland() && app.state::<DockState>().lock().edge != DockEdge::None
+}
+
 /// Taille du panneau ouvert, en pixels logiques, calculée par l'interface d'après
 /// les tuiles de la page. Elle est réduite à la taille de l'écran si besoin.
 #[tauri::command]
@@ -748,7 +996,7 @@ pub fn dock_set_panel<R: Runtime>(
     let target = {
         let mut inner = state.lock();
         inner.panel = Some((width, height));
-        inner.target()
+        inner.target(CLICK_THROUGH)
     };
     if let (Some(window), Some(rect)) = (app.get_webview_window(MAIN), target) {
         set_rect(&window, rect);
@@ -760,13 +1008,50 @@ pub fn dock_set_panel<R: Runtime>(
 /// elle montre une activité en direct, et la remet à `NOTCH_LENGTH` ensuite. Seule
 /// la zone qui ouvre le panneau change : la fenêtre garde sa taille.
 #[tauri::command]
-pub fn dock_set_notch(state: State<'_, DockState>, length: f64) -> AppResult<()> {
+pub fn dock_set_notch<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, DockState>,
+    length: f64,
+) -> AppResult<()> {
     if !length.is_finite() {
         return Err(AppError::Other(format!(
             "longueur d'encoche invalide : {length}"
         )));
     }
-    state.lock().notch_length = Some(length.clamp(NOTCH_LENGTH_RANGE.0, NOTCH_LENGTH_RANGE.1));
+    let target = {
+        let mut inner = state.lock();
+        inner.notch_length = Some(length.clamp(NOTCH_LENGTH_RANGE.0, NOTCH_LENGTH_RANGE.1));
+        // Sans `CLICK_THROUGH`, la fenêtre repliée a la taille de l'encoche.
+        if CLICK_THROUGH || inner.expanded {
+            None
+        } else {
+            inner.target(false)
+        }
+    };
+    if let (Some(window), Some(rect)) = (app.get_webview_window(MAIN), target) {
+        set_rect(&window, rect);
+    }
+    Ok(())
+}
+
+/// La souris est entrée dans la fenêtre ancrée ou en est sortie, d'après
+/// l'interface. Sert là où le Rust ne peut pas suivre la souris (Linux).
+#[tauri::command]
+pub fn dock_pointer(state: State<'_, DockState>, inside: bool) {
+    state.lock().pointer_inside = inside;
+}
+
+/// Détache la fenêtre du bord de l'écran (menu de la zone de notification) : le
+/// réglage est enregistré, puis appliqué.
+pub fn undock<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
+    let store = app.state::<ConfigStore>();
+    let mut config = store.get();
+    if config.window.dock == DockEdge::None {
+        return Ok(());
+    }
+    config.window.dock = DockEdge::None;
+    let saved = store.set(config)?;
+    apply(app, &saved.window);
     Ok(())
 }
 
@@ -935,10 +1220,11 @@ mod tests {
         let status = DockStatus {
             edge: DockEdge::Bottom,
             expanded: true,
+            refused: false,
         };
         assert_eq!(
             serde_json::to_string(&status).unwrap(),
-            r#"{"edge":"bottom","expanded":true}"#
+            r#"{"edge":"bottom","expanded":true,"refused":false}"#
         );
     }
 
@@ -950,26 +1236,94 @@ mod tests {
             ..Inner::default()
         };
         let panel = fit(SCREEN, DockEdge::Left, 640, 360);
-        assert_eq!(inner.target(), Some(panel));
-        assert_eq!(
-            inner.hover_rect(),
-            Some(fit(SCREEN, DockEdge::Left, 32, 180))
-        );
+        let notch = fit(SCREEN, DockEdge::Left, 32, 180);
+        // Fenêtre qui laisse passer les clics : toujours la taille du panneau.
+        assert_eq!(inner.target(true), Some(panel));
+        // Sinon (Linux) : la taille de l'encoche tant qu'elle est repliée.
+        assert_eq!(inner.target(false), Some(notch));
+        assert_eq!(inner.hover_rect(panel), Some(notch));
         inner.notch_length = Some(300.0);
-        assert_eq!(inner.target(), Some(panel));
+        assert_eq!(inner.target(true), Some(panel));
         assert_eq!(
-            inner.hover_rect(),
+            inner.target(false),
+            Some(fit(SCREEN, DockEdge::Left, 32, 300))
+        );
+        assert_eq!(
+            inner.hover_rect(panel),
             Some(fit(SCREEN, DockEdge::Left, 32, 300))
         );
         inner.expanded = true;
-        assert_eq!(inner.hover_rect(), Some(panel));
+        assert_eq!(inner.target(false), Some(panel));
+        assert_eq!(inner.hover_rect(panel), Some(panel));
         inner.panel = Some((332.0, 700.0));
         let bigger = fit(SCREEN, DockEdge::Left, 332, 700);
-        assert_eq!(inner.target(), Some(bigger));
+        assert_eq!(inner.target(true), Some(bigger));
         assert_eq!((bigger.x, bigger.y), (0, 170));
         inner.edge = DockEdge::None;
-        assert_eq!(inner.target(), None);
-        assert_eq!(inner.hover_rect(), None);
+        assert_eq!(inner.target(true), None);
+        assert_eq!(inner.hover_rect(panel), None);
+    }
+
+    #[test]
+    fn misplaced_window_is_placed_again_then_given_up() {
+        let target = fit(SCREEN, DockEdge::Left, 32, 180);
+        let centered = fit(SCREEN, DockEdge::None, 32, 180);
+        let mut placement = Placement::default();
+        assert_eq!(placement.check(target, target, POLL_MS), Placed::Fine);
+        let mut tries = 0;
+        let mut outcome = Placed::Fine;
+        for _ in 0..200 {
+            outcome = placement.check(centered, target, POLL_MS);
+            match outcome {
+                Placed::Retry => tries += 1,
+                Placed::Refused => break,
+                Placed::Fine => {}
+            }
+        }
+        assert_eq!((tries, outcome), (PLACEMENT_TRIES, Placed::Refused));
+        // Une fois abandonné, plus rien n'est demandé.
+        assert_eq!(placement.check(centered, target, POLL_MS), Placed::Fine);
+    }
+
+    #[test]
+    fn window_placed_after_a_while_is_fine() {
+        let target = fit(SCREEN, DockEdge::Left, 32, 180);
+        let centered = fit(SCREEN, DockEdge::None, 32, 180);
+        let mut placement = Placement::default();
+        assert_eq!(
+            placement.check(centered, target, PLACEMENT_GRACE_MS),
+            Placed::Retry
+        );
+        assert_eq!(placement.check(target, target, POLL_MS), Placed::Fine);
+        assert_eq!(placement.check(centered, target, POLL_MS), Placed::Fine);
+    }
+
+    #[test]
+    fn drag_margin_grows_the_window() {
+        let rect = Rect {
+            x: 10,
+            y: 20,
+            width: 100,
+            height: 50,
+        };
+        let big = grown(rect, 24);
+        assert_eq!((big.x, big.y, big.width, big.height), (-14, -4, 148, 98));
+        assert!(big.contains(0.0, 0.0));
+        assert!(!rect.contains(0.0, 0.0));
+    }
+
+    #[test]
+    fn notch_follows_the_window_where_the_desktop_put_it() {
+        // Le bureau a laissé la fenêtre au milieu de l'écran : l'encoche y est.
+        let inner = Inner {
+            edge: DockEdge::Left,
+            screen: Some((SCREEN, 1.0)),
+            ..Inner::default()
+        };
+        let centered = fit(SCREEN, DockEdge::None, 640, 360);
+        let zone = inner.hover_rect(centered).unwrap();
+        assert_eq!((zone.x, zone.width, zone.height), (centered.x, 32, 180));
+        assert!(centered.holds(zone));
     }
 
     #[test]

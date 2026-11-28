@@ -1,78 +1,160 @@
 //! Linux : choix du serveur d'affichage.
 //!
-//! Sous Wayland, une application ne peut ni se placer elle-même à l'écran, ni
-//! connaître la position de la souris hors de sa fenêtre, et « toujours au premier
-//! plan » est souvent ignoré : l'encoche ne pourrait pas se coller au bord ni
-//! s'ouvrir au survol (voir `dock`). En session Wayland, l'application passe donc
-//! par XWayland (X11), qui permet tout cela. L'utilisateur garde la main : s'il a
-//! choisi lui-même `GDK_BACKEND`, rien ne change.
+//! Sous Wayland, une fenêtre ordinaire ne peut ni se placer elle-même à l'écran,
+//! ni connaître la position de la souris hors d'elle. Deux façons d'avoir quand
+//! même l'encoche :
+//! - le protocole « layer shell » (COSMIC, KDE, Sway, Hyprland…), qui colle une
+//!   fenêtre contre un bord de l'écran : l'application reste alors en Wayland
+//!   (voir `layer`, encore expérimental) ;
+//! - sinon (GNOME n'a pas ce protocole), passer par XWayland (X11), où la fenêtre
+//!   peut se placer elle-même.
+//!
+//! L'utilisateur garde la main : s'il a choisi lui-même `GDK_BACKEND`, rien ne change.
 
-/// Indique s'il faut demander X11 à GTK, d'après les variables d'environnement :
-/// session Wayland, XWayland disponible (`DISPLAY`), et `GDK_BACKEND` non choisi.
-pub fn should_use_x11(
-    wayland_display: Option<&str>,
-    session_type: Option<&str>,
-    x11_display: Option<&str>,
-    gdk_backend: Option<&str>,
-) -> bool {
-    let set = |value: Option<&str>| value.is_some_and(|v| !v.trim().is_empty());
-    let wayland = set(wayland_display) || session_type.is_some_and(|t| t.trim() == "wayland");
-    wayland && set(x11_display) && !set(gdk_backend)
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Serveur d'affichage retenu au démarrage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Backend {
+    /// Choix de GTK ou de l'utilisateur (Windows, session X11, `GDK_BACKEND` fixé).
+    Default,
+    /// Session Wayland, encoche par le layer shell.
+    Wayland,
+    /// Session Wayland, encoche par XWayland.
+    Xwayland,
 }
 
-/// À appeler tout au début, avant que GTK ne démarre. Renvoie `true` si
-/// l'application passe par XWayland.
-#[cfg(target_os = "linux")]
-pub fn prefer_x11() -> bool {
-    let var = |name: &str| std::env::var(name).ok();
-    let use_x11 = should_use_x11(
-        var("WAYLAND_DISPLAY").as_deref(),
-        var("XDG_SESSION_TYPE").as_deref(),
-        var("DISPLAY").as_deref(),
-        var("GDK_BACKEND").as_deref(),
-    );
-    if use_x11 {
-        // Appelé avant tout autre fil d'exécution : la modification est sûre.
-        std::env::set_var("GDK_BACKEND", "x11");
+/// Environnement lu au démarrage.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Env<'a> {
+    pub wayland_display: Option<&'a str>,
+    pub session_type: Option<&'a str>,
+    pub x11_display: Option<&'a str>,
+    pub gdk_backend: Option<&'a str>,
+    /// `XDG_CURRENT_DESKTOP`, par exemple `COSMIC` ou `ubuntu:GNOME`.
+    pub desktop: Option<&'a str>,
+    /// `libgtk-layer-shell` est installée et le layer shell demandé
+    /// (`AUGMENTED_PC_DECK_LAYER_SHELL=1`, encore expérimental).
+    pub layer_shell: bool,
+}
+
+/// Bureaux sans layer shell : ceux bâtis sur Mutter (GNOME).
+const NO_LAYER_SHELL: [&str; 4] = ["gnome", "unity", "pantheon", "budgie"];
+
+/// Choisit le serveur d'affichage d'après l'environnement.
+pub fn choose(env: Env<'_>) -> Backend {
+    let set = |value: Option<&str>| value.is_some_and(|v| !v.trim().is_empty());
+    let wayland =
+        set(env.wayland_display) || env.session_type.is_some_and(|t| t.trim() == "wayland");
+    if !wayland || set(env.gdk_backend) {
+        return Backend::Default;
     }
-    use_x11
+    let desktop = env.desktop.unwrap_or_default().to_lowercase();
+    let mutter = desktop
+        .split(':')
+        .any(|name| NO_LAYER_SHELL.contains(&name.trim()));
+    if env.layer_shell && !mutter {
+        Backend::Wayland
+    } else if set(env.x11_display) {
+        Backend::Xwayland
+    } else {
+        Backend::Default
+    }
+}
+
+static NATIVE_WAYLAND: AtomicBool = AtomicBool::new(false);
+
+/// Indique si l'application tourne en Wayland avec le layer shell pour l'encoche.
+pub fn native_wayland() -> bool {
+    NATIVE_WAYLAND.load(Ordering::Relaxed)
+}
+
+/// À appeler tout au début, avant que GTK ne démarre.
+#[cfg(target_os = "linux")]
+pub fn setup() -> Backend {
+    let var = |name: &str| std::env::var(name).ok();
+    let (wayland_display, session_type, x11_display, gdk_backend, desktop) = (
+        var("WAYLAND_DISPLAY"),
+        var("XDG_SESSION_TYPE"),
+        var("DISPLAY"),
+        var("GDK_BACKEND"),
+        var("XDG_CURRENT_DESKTOP"),
+    );
+    let backend = choose(Env {
+        wayland_display: wayland_display.as_deref(),
+        session_type: session_type.as_deref(),
+        x11_display: x11_display.as_deref(),
+        gdk_backend: gdk_backend.as_deref(),
+        desktop: desktop.as_deref(),
+        layer_shell: var("AUGMENTED_PC_DECK_LAYER_SHELL").is_some_and(|v| v.trim() == "1")
+            && crate::layer::available(),
+    });
+    match backend {
+        Backend::Wayland => {
+            // Appelé avant tout autre fil d'exécution : la modification est sûre.
+            std::env::set_var("GDK_BACKEND", "wayland");
+            NATIVE_WAYLAND.store(true, Ordering::Relaxed);
+        }
+        Backend::Xwayland => std::env::set_var("GDK_BACKEND", "x11"),
+        Backend::Default => {}
+    }
+    backend
 }
 
 /// Hors de Linux, rien à choisir.
 #[cfg(not(target_os = "linux"))]
-pub fn prefer_x11() -> bool {
-    false
+pub fn setup() -> Backend {
+    Backend::Default
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn wayland<'a>(desktop: &'a str, layer_shell: bool) -> Env<'a> {
+        Env {
+            wayland_display: Some("wayland-0"),
+            session_type: Some("wayland"),
+            x11_display: Some(":0"),
+            desktop: Some(desktop),
+            layer_shell,
+            ..Env::default()
+        }
+    }
+
     #[test]
-    fn wayland_session_goes_through_xwayland() {
-        assert!(should_use_x11(Some("wayland-0"), None, Some(":0"), None));
-        assert!(should_use_x11(None, Some("wayland"), Some(":1"), Some("")));
+    fn cosmic_and_kde_use_the_layer_shell() {
+        assert_eq!(choose(wayland("COSMIC", true)), Backend::Wayland);
+        assert_eq!(choose(wayland("KDE", true)), Backend::Wayland);
+        assert_eq!(choose(wayland("sway", true)), Backend::Wayland);
+    }
+
+    #[test]
+    fn gnome_or_missing_library_goes_through_xwayland() {
+        assert_eq!(choose(wayland("ubuntu:GNOME", true)), Backend::Xwayland);
+        assert_eq!(choose(wayland("pop:GNOME", true)), Backend::Xwayland);
+        assert_eq!(choose(wayland("COSMIC", false)), Backend::Xwayland);
+        let no_xwayland = Env {
+            x11_display: None,
+            ..wayland("COSMIC", false)
+        };
+        assert_eq!(choose(no_xwayland), Backend::Default);
     }
 
     #[test]
     fn user_choice_and_x11_sessions_are_left_alone() {
-        // L'utilisateur a choisi le serveur lui-même.
-        assert!(!should_use_x11(
-            Some("wayland-0"),
-            None,
-            Some(":0"),
-            Some("wayland")
-        ));
-        // Session X11.
-        assert!(!should_use_x11(None, Some("x11"), Some(":0"), None));
-        // Pas de XWayland : on reste en Wayland.
-        assert!(!should_use_x11(
-            Some("wayland-0"),
-            Some("wayland"),
-            None,
-            None
-        ));
-        // Windows, ou rien de connu.
-        assert!(!should_use_x11(None, None, None, None));
+        let chosen = Env {
+            gdk_backend: Some("x11"),
+            ..wayland("COSMIC", true)
+        };
+        assert_eq!(choose(chosen), Backend::Default);
+        let x11 = Env {
+            session_type: Some("x11"),
+            x11_display: Some(":0"),
+            layer_shell: true,
+            ..Env::default()
+        };
+        assert_eq!(choose(x11), Backend::Default);
+        assert_eq!(choose(Env::default()), Backend::Default);
     }
 }
